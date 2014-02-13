@@ -1,0 +1,29 @@
+{
+  "name": "node-irc-client",
+  "version": "0.0.1",
+  "description": "An IRC client for Node.js",
+  "main": "dist/client.js",
+  "dependencies": {
+    "irc-message": "~1.0.0"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.2",
+    "grunt-contrib-coffee": "~0.7.0",
+    "grunt-mocha-test": "~0.8.1",
+    "irc-message": "~1.0.0",
+    "chai": "~1.9.0",
+    "grunt-coffeelint": "0.0.8",
+    "mocha": "~1.17.1",
+    "coffee-script": "~1.7.1"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [
+    "irc",
+    "client",
+    "bot"
+  ],
+  "author": "Rahat Ahmed <rahatarmanahmed@gmail.com>",
+  "license": "EPL"
+}
