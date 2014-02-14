@@ -1,0 +1,8 @@
+{
+  "server": "irc.ircnetwork.net",
+  "port": 6667,
+  "nick": "NodeIRCTestBot",
+  "username": "NodeIRCTestBot",
+  "realname": "I do the tests.",
+  "autoConnect": false
+}

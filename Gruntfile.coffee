@@ -3,6 +3,7 @@ module.exports = (grunt) ->
     grunt.task.loadNpmTasks 'grunt-mocha-test'
     grunt.task.loadNpmTasks 'grunt-contrib-coffee'
     grunt.task.loadNpmTasks 'grunt-coffeelint'
+    grunt.task.loadNpmTasks 'grunt-codo'
 
     grunt.initConfig
         pkg: 
@@ -38,10 +39,17 @@ module.exports = (grunt) ->
                 src:
                     'test/*.coffee'
 
+        codo:
+            options:
+                title: "node-irc-client"
+                output: "docs/"
+                inputs: ["src/"]
+
     grunt.event.on 'coffee.error', (msg) ->
         grunt.log.write msg
 
+    grunt.registerTask 'docs', ['codo']
     grunt.registerTask 'lint', ['coffeelint']
-    grunt.registerTask 'build', ['test', 'coffee:dist']
+    grunt.registerTask 'build', ['test', 'coffee:dist', 'docs']
     grunt.registerTask 'test', ['lint', 'mochaTest']
     grunt.registerTask 'default', ['build']
