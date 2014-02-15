@@ -42,7 +42,6 @@ class Client extends EventEmitter
 			numRetries: 0
 			iSupport: {}
 			greeting: {}
-			receivingMOTD: false
 		if not opt?
 			throw new Error "No options argument given."
 		if typeof opt is "string"
@@ -69,8 +68,9 @@ class Client extends EventEmitter
 	connect: (cb) ->
 		@log "Connecting..."
 		@conn = net.connect @opt.port, @opt.server, =>
-			@once "connect", (nick) ->
-				cb(nick)
+			if cb instanceof Function
+				@once "connect", (nick) ->
+					cb(nick)
 			@log "Connected"
 			@conn.on "data", (data) =>
 				@log data.toString()
@@ -83,10 +83,13 @@ class Client extends EventEmitter
 
 	###
 	Disconnects from the server.
-	@param reason [String] The optional quit reason. Default is "Brought to you by node-irc-client."
+	@param reason [String] The optional quit reason.
 	###
-	disconnect: (reason = "Brought to you by node-irc-client.") ->
-		@raw "QUIT :#{reason}"
+	disconnect: (reason) ->
+		if reason?
+			@raw "QUIT :#{reason}"
+		else
+			@raw "QUIT"
 		@conn = null
 
 	###
@@ -156,11 +159,11 @@ class Client extends EventEmitter
 					if chan.toLowerCase() isnt chan
 						@emit "join#{chan.toLowerCase()}", chan, nick
 				when "NICK"
-					oldNick = parsedReply.parseHostmaskFromPrefix().nickname
-					newNick = parsedReply.params[0]
+					oldnick = parsedReply.parseHostmaskFromPrefix().nickname
+					newnick = parsedReply.params[0]
 					if oldnick is @nick()
-						@_.nick = newNick
-					@emit "nick", oldNick, newNick
+						@_.nick = newnick
+					@emit "nick", oldnick, newnick
 
 				when "PING"
 					@raw "PONG :#{parsedReply.params[0]}"
@@ -169,12 +172,13 @@ class Client extends EventEmitter
 					@emit "connect", @_.nick
 					@join @opt.channels
 
-				when "002" # RPL_YOURHOST
-					@_.greeting.yourHost = parsedReply.params[1]
-				when "003" # RPL_CREATED
-					@_.greeting.created = parsedReply.params[1]
-				when "004" # RPL_MYINFO
-					@_.greeting.myInfo = parsedReply.params[1..].join " "
+				# These are kinda useless and trivial
+				# when "002" # RPL_YOURHOST
+				# 	@_.greeting.yourHost = parsedReply.params[1]
+				# when "003" # RPL_CREATED
+				# 	@_.greeting.created = parsedReply.params[1]
+				# when "004" # RPL_MYINFO
+				# 	@_.greeting.myInfo = parsedReply.params[1..].join " "
 
 				when "005" # RPL_ISUPPORT because we can
 					for item in parsedReply.params[1..]
@@ -188,10 +192,8 @@ class Client extends EventEmitter
 				when "372" #RPL_MOTD
 					@_.MOTD += parsedReply.params[1] + "\r\n"
 				when "375" # RPL_MOTDSTART
-					@_.receivingMOTD = true
-					@_.MOTD = ""
+					@_.MOTD = parsedReply.params[1] + "\r\n"
 				when "376" # RPL_ENDOFMOTD
-					@_.receivingMOTD = false
 					@emit "motd", @_.MOTD
 
 				when "433" # ERR_NICKNAMEINUSE

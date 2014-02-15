@@ -18,7 +18,7 @@
     "grunt-codo": "~0.1.0"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "grunt test"
   },
   "keywords": [
     "irc",
