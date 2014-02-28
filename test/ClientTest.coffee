@@ -17,14 +17,10 @@ class TestClient extends Client
 		# If param is array, returns true if all lines are in the log
 		@happened = (rawLine) ->
 			if rawLine instanceof Array
-				didHappen = true
-				for line in rawLine
-					didHappen &= @happened line
-				return didHappen
+				return false if not @happened line for line in rawLine
+				return true
 			rawLine += "\r\n"
-			for line in @rawLog
-				if line is rawLine
-					return true
+			return true if line is rawLine for line in @rawLog
 			return false
 		@handleReplies = (replies) ->
 			for reply in replies
@@ -98,7 +94,114 @@ describe 'node-irc-client', ->
 			client.nick "PricklyPear"
 			client.happened("NICK PricklyPear").should.be.true
 
-	# TODO: tests for client.join
+	describe 'join', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.ircnet.net"
+				nick: "Cage"
+				verbose: false
+			client.handleReply ":irc.ircnet.net 001 Cage :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+
+		it 'a single channel', ->
+			client.join "#furry"
+			client.happened("JOIN #furry").should.be.true
+
+
+		it 'a single channel with a callback', (done) ->
+			client.join "#furry", async(done) (chan, nick) ->
+				chan.should.be.equal "#furry"
+				nick.should.be.equal "Cage"
+				done()
+			client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry"
+
+		it 'an array of channels', ->
+			client.join ["#furry", "#wizard", "#jayleno"]
+			client.happened("JOIN #furry,#wizard,#jayleno").should.be.true
+
+		it 'an array of channels with a callback', ->
+			it 'should work for one channel in the array', ->
+				client.join ["#furry", "#wizard"], async(done) (chan, nick) ->
+					chan.should.be.equal "#furry"
+					nick.should.be.equal "Cage"
+					done()
+				client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry"
+			it 'should work for another channel in the array', ->
+				client.join ["#furry", "#wizard"], async(done) (chan, nick) ->
+					chan.should.be.equal "#wizard"
+					nick.should.be.equal "Cage"
+					done()
+				client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #wizard"
+
+	describe 'part', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.ircnet.net"
+				nick: "Cage"
+				verbose: false
+			client.handleReply ":irc.ircnet.net 001 Cage :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+
+		it 'a single channel', ->
+			client.part "#furry"
+			client.happened("PART #furry").should.be.true
+
+		it 'a single channel with a reason', ->
+			client.part "#furry", "I'm leaving."
+			client.happened("PART #furry :I'm leaving.").should.be.true
+
+		it 'a single channel with a callback', (done) ->
+			client.part "#furry", async(done) (chan, nick) ->
+				chan.should.be.equal "#furry"
+				nick.should.be.equal "Cage"
+				done()
+			client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry"
+
+		it 'a single channel with a reason and callback', (done) ->
+			client.part "#furry", "I'm leaving.", async(done) (chan, nick) ->
+				chan.should.be.equal "#furry"
+				nick.should.be.equal "Cage"
+				done()
+			client.happened("PART #furry :I'm leaving.").should.be.true
+			client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry"
+
+		it 'an array of channels', ->
+			client.part ["#furry", "#wizard", "#jayleno"]
+			client.happened("PART #furry,#wizard,#jayleno").should.be.true
+
+		it 'an array of channels with a reason', ->
+			client.part ["#furry", "#wizard", "#jayleno"], "I'm leaving."
+			client.happened("PART #furry,#wizard,#jayleno :I'm leaving.").should.be.true
+
+		it 'an array of channels with a callback', ->
+			it 'should work for one channel in the array', ->
+				client.part ["#furry", "#wizard"], async(done) (chan, nick) ->
+					chan.should.be.equal "#furry"
+					nick.should.be.equal "Cage"
+					done()
+				client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry"
+			it 'should work for another channel in the array', ->
+				client.part ["#furry", "#wizard"], async(done) (chan, nick) ->
+					chan.should.be.equal "#wizard"
+					nick.should.be.equal "Cage"
+					done()
+				client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #wizard"
+
+		it 'an array of channels with a reason and callback', ->
+			it 'should work for one channel in the array', ->
+				client.part ["#furry", "#wizard"], "I'm leaving", async(done) (chan, nick) ->
+					chan.should.be.equal "#furry"
+					nick.should.be.equal "Cage"
+					done()
+				client.happened("PART #furry,#wizard,#jayleno :I'm leaving.").should.be.true
+				client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry"
+			it 'should work for another channel in the array', ->
+				client.part ["#furry", "#wizard"], "I'm leaving", async(done) (chan, nick) ->
+					chan.should.be.equal "#wizard"
+					nick.should.be.equal "Cage"
+					done()
+				client.happened("PART #furry,#wizard,#jayleno :I'm leaving.").should.be.true
+				client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #wizard"
 
 	describe 'handleReply simulations', ->
 		client = null
@@ -205,6 +308,28 @@ describe 'node-irc-client', ->
 					nick.should.equal "lawblob"
 					done()
 				client.handleReply ":lawblob!~lawblobuser@cpe-76-183-227-155.tx.res.rr.com JOIN #testChan"
+
+		describe 'part', ->
+			it 'should emit a part event', (done) ->
+				client.once 'part', async(done) (chan, nick) ->
+					chan.should.equal "#testChan"
+					nick.should.equal "lawblob"
+					done()
+				client.handleReply ":lawblob!~lawblobuser@cpe-76-183-227-155.tx.res.rr.com PART #testChan"
+
+			it 'should emit a part#chan event', (done) ->
+				client.once 'part#testChan', async(done) (chan, nick) ->
+					chan.should.equal "#testChan"
+					nick.should.equal "lawblob"
+					done()
+				client.handleReply ":lawblob!~lawblobuser@cpe-76-183-227-155.tx.res.rr.com PART #testChan"
+
+			it 'should emit a part#chan event in lowercase', (done) ->
+				client.once 'part#testchan', async(done) (chan, nick) ->
+					chan.should.equal "#testChan"
+					nick.should.equal "lawblob"
+					done()
+				client.handleReply ":lawblob!~lawblobuser@cpe-76-183-227-155.tx.res.rr.com PART #testChan"
 
 		describe 'nick', ->
 			it 'should emit a nick event', (done) ->

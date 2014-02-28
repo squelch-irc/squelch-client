@@ -40,6 +40,7 @@ class Client extends EventEmitter
 	constructor: (opt) ->
 		@_ =
 			numRetries: 0
+			channels: []
 			iSupport: {}
 			greeting: {}
 		if not opt?
@@ -130,19 +131,66 @@ class Client extends EventEmitter
 	  @param cb [Function] A callback that's called on successful join
 	###
 	join: (chan, cb) ->
-		if chan instanceof Array
-			@raw "JOIN #{chan.join()}" if chan.length > 0
+		if chan instanceof Array and chan.length > 0
+			@raw "JOIN #{chan.join()}"
 			if cb instanceof Function
 				for c in chan
 					do (c) =>
-						@once "join#{c}", ->
-							cb(c)
+						@once "join#{c}", (channel, nick) ->
+							cb(channel, nick)
 
 		else
 			@raw "JOIN #{chan}"
 			if cb instanceof Function
-					@once "join#{chan}", ->
-						cb(chan)
+				@once "join#{chan}", (channel, nick) ->
+					cb(channel, nick)
+
+	###
+	@overload #part(chan)
+	  Parts a channel.
+
+	  @param chan [String, Array] The channel or array of channels to part
+
+	@overload #part(chan, reason)
+	  Parts a channel with a reason message.
+
+	  @param chan [String, Array] The channel or array of channels to part
+	  @param reason [String] The reason message
+
+	@overload #part(chan, cb)
+	  Parts a channel.
+
+	  @param chan [String, Array] The channel or array of channels to part
+	  @param cb [Function] A callback that's called on successful part
+
+	@overload #part(chan, reason, cb)
+	  Parts a channel with a reason message.
+
+	  @param chan [String, Array] The channel or array of channels to part
+	  @param reason [String] The reason message
+	  @param cb [Function] A callback that's called on successful part
+	###
+	part: (chan, reason, cb) ->
+		reason = "" if not reason?
+		if reason instanceof Function
+			cb = reason
+			reason = ""
+		else
+			reason = " :" + reason
+		if chan instanceof Array and chan.length > 0
+			@raw "PART #{chan.join()+reason}"
+			if cb instanceof Function
+				for c in chan
+					do (c) =>
+						@once "part#{c}", (channel, nick) ->
+							cb(channel, nick)
+		else
+			@raw "PART #{chan+reason}"
+			if cb instanceof Function
+				@once "part#{chan}", (channel, nick) ->
+					cb(channel, nick)
+
+
 	###
 	@nodoc
 	###
@@ -158,6 +206,14 @@ class Client extends EventEmitter
 					# Because no one likes case sensitivity
 					if chan.toLowerCase() isnt chan
 						@emit "join#{chan.toLowerCase()}", chan, nick
+				when "PART"
+					nick = parsedReply.parseHostmaskFromPrefix().nickname
+					chan = parsedReply.params[0]
+					@emit "part", chan, nick
+					@emit "part#{chan}", chan, nick
+					# Because no one likes case sensitivity
+					if chan.toLowerCase() isnt chan
+						@emit "part#{chan.toLowerCase()}", chan, nick
 				when "NICK"
 					oldnick = parsedReply.parseHostmaskFromPrefix().nickname
 					newnick = parsedReply.params[0]
@@ -214,6 +270,8 @@ Events so far
 
 join: (chan, nick)
 join#chan: (chan, nick)
+part: (chan, nick)
+part#chan: (chan, nick)
 connect: (nick)
 nick: (old, new)
 raw: (parsedReply)
