@@ -40,6 +40,8 @@ class Client extends EventEmitter
 	constructor: (opt) ->
 		@_ =
 			numRetries: 0
+			connected: false
+			disconnecting: false
 			channels: []
 			iSupport: {}
 			greeting: {}
@@ -77,21 +79,42 @@ class Client extends EventEmitter
 				@log data.toString()
 				for line in data.toString().split "\r\n"
 					@handleReply line
+			@conn.on "close", =>
+				@conn.destroy()
+				@conn = null
+				@_.connected = false
 
 			@raw "PASS #{@opt.password}" if @opt.password?
 			@raw "NICK #{@opt.nick}"
 			@raw "USER #{@opt.username} 8 * :#{@opt.realname}"
 
 	###
-	Disconnects from the server.
-	@param reason [String] The optional quit reason.
+	@overload #disconnect()
+	  Disconnects from the server.
+	@overload #disconnect(reason)
+	  Disconnects from the server.
+	  @param reason [String] The quit reason.
+	@overload #disconnect(cb)
+	  Disconnects from the server.
+	  @param cb [Function] Callback to call on successful disconnect.
+	@overload #disconnect(reason, cb)
+	  Disconnects from the server.
+	  @param reason [String] The quit reason.
+	  @param cb [Function] Callback to call on successful disconnect.
 	###
-	disconnect: (reason) ->
+	disconnect: (reason, cb) ->
+		if reason instanceof Function
+			cb = reason
+			reason = undefined
+		@_.disconnecting = true
 		if reason?
 			@raw "QUIT :#{reason}"
 		else
 			@raw "QUIT"
-		@conn = null
+		if cb instanceof Function
+			@once "disconnect", ->
+				cb()
+
 
 	###
 	Sends a raw message to the server. Automatically appends "\r\n".
@@ -190,6 +213,13 @@ class Client extends EventEmitter
 				@once "part#{chan}", (channel, nick) ->
 					cb(channel, nick)
 
+	###
+	Returns if this client is connected.
+	NOTE: Not just connected to the socket, but connected in the sense
+	that the IRC server has accepted the connection attempt with a 001 reply
+	@return [Boolean] true if connected, false otherwise
+	###
+	isConnected: -> return @_.connected
 
 	###
 	@nodoc
@@ -220,10 +250,18 @@ class Client extends EventEmitter
 					if oldnick is @nick()
 						@_.nick = newnick
 					@emit "nick", oldnick, newnick
-
 				when "PING"
 					@raw "PONG :#{parsedReply.params[0]}"
+				when "ERROR"
+					@conn.destroy()
+					@conn = null
+					@_.connected = false
+					@emit "error", parsedReply.params[0] if not @_.disconnecting
+					@emit "disconnect"
+					@_.disconnecting = false
+					@log "Disconnected"
 				when "001" # RPL_WELCOME
+					@_.connected = true
 					@_.nick = parsedReply.params[0]
 					@emit "connect", @_.nick
 					@join @opt.channels
@@ -276,4 +314,6 @@ connect: (nick)
 nick: (old, new)
 raw: (parsedReply)
 motd: (motd)
+error: (msg)
+disconnect: ()
 ###

@@ -13,6 +13,7 @@ class TestClient extends Client
 		@rawLog = []
 		@conn =
 			write: (data) -> self.rawLog.push data
+			destroy: ->
 		# Checks output log to see if the client ever sent the given line
 		# If param is array, returns true if all lines are in the log
 		@happened = (rawLine) ->
@@ -77,6 +78,39 @@ describe 'node-irc-client', ->
 		it "should send a reason with the QUIT", ->
 			client.disconnect "Choke on it."
 			client.happened("QUIT :Choke on it.").should.be.true
+
+		it "should run the callback on successful disconnect", (done) ->
+			client._.disconnecting.should.be.false
+			client.disconnect async(done) () ->
+				done()
+			client._.disconnecting.should.be.true
+			client.handleReply "ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)"
+			client._.disconnecting.should.be.false
+
+		it "should send a reason and run the callback on successful disconnect", (done) ->
+			client._.disconnecting.should.be.false
+			client.disconnect "Choke on it.", async(done) () ->
+				done()
+			client.happened("QUIT :Choke on it.").should.be.true
+			client._.disconnecting.should.be.true
+			client.handleReply "ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Choke on it.)"
+			client._.disconnecting.should.be.false
+
+	describe 'isConnected', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.indiegames.net"
+				nick: "PhilFish"
+				verbose: false
+		it "should only be true when connected to the server", ->
+			client.isConnected().should.be.false
+			client.handleReply ":irc.indiegames.net 001 PhilFish :Welcome to the IRCNet Internet Relay Chat Network PhilFish"
+			client.isConnected().should.be.true
+			client.disconnect("Choke on it.")
+			client.handleReply "ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Choke on it.)"
+			# client.isConnected().should.be.false
+
 
 	describe 'nick', ->
 		client = null
@@ -344,3 +378,17 @@ describe 'node-irc-client', ->
 				client.handleReply ":PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com NICK :SteelUrGirl"
 				client._.nick.should.equal "SteelUrGirl"
 
+		describe 'error', ->
+			it 'should emit an error event', (done) ->
+				client.once 'error', async(done) (msg) ->
+					msg.should.equal "Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)"
+					done()
+				client.handleReply "ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)"
+			it 'should emit an disconnect event', (done) ->
+				client._.disconnecting.should.be.false
+				client.once 'disconnect', async(done) () ->
+					done()
+				client.disconnect() # won't trigger error if disconnecting
+				client._.disconnecting.should.be.true
+				client.handleReply "ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)"
+				client._.disconnecting.should.be.false
