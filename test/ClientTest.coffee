@@ -18,7 +18,7 @@ class TestClient extends Client
 		# If param is array, returns true if all lines are in the log
 		@happened = (rawLine) ->
 			if rawLine instanceof Array
-				return false if not @happened line for line in rawLine
+				(return false if not @happened line) for line in rawLine
 				return true
 			rawLine += "\r\n"
 			return true if line is rawLine for line in @rawLog
@@ -150,7 +150,7 @@ describe 'node-irc-client', ->
 				server: "irc.ircnet.net"
 				nick: "Cage"
 				verbose: false
-			client.handleReply ":irc.ircnet.net 001 Cage :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+			client.handleReply ":irc.ircnet.net 001 Cage :Welcome to the IRCNet Internet Relay Chat Network Cage"
 
 		it 'with no parameters should return the nick', ->
 			client.nick().should.equal "Cage"
@@ -159,6 +159,40 @@ describe 'node-irc-client', ->
 			client.nick "PricklyPear"
 			client.happened("NICK PricklyPear").should.be.true
 
+	describe 'msg', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.ircnet.net"
+				nick: "PakaluPapito"
+				verbose: false
+			client.handleReply ":irc.ircnet.net 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+
+		it 'should send a PRIVMSG', ->
+			client.msg "#girls", "u want to see gas station"
+			client.msg "HotGurl22", "i show u gas station"
+			client.happened([
+				"PRIVMSG #girls :u want to see gas station"
+				"PRIVMSG HotGurl22 :i show u gas station"
+			]).should.be.true
+
+	describe 'action', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.ircnet.net"
+				nick: "PakaluPapito"
+				verbose: false
+			client.handleReply ":irc.ircnet.net 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+
+		it 'should send a PRIVMSG action', ->
+			client.action "#girls", "shows u gas station"
+			client.action "HotGurl22", "shows u camel"
+			client.happened([
+				"PRIVMSG #girls :\u0001ACTION shows u gas station\u0001"
+				"PRIVMSG HotGurl22 :\u0001ACTION shows u camel\u0001"
+			]).should.be.true
+
 	describe 'join', ->
 		client = null
 		beforeEach ->
@@ -166,7 +200,7 @@ describe 'node-irc-client', ->
 				server: "irc.ircnet.net"
 				nick: "Cage"
 				verbose: false
-			client.handleReply ":irc.ircnet.net 001 Cage :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+			client.handleReply ":irc.ircnet.net 001 Cage :Welcome to the IRCNet Internet Relay Chat Network Cage"
 
 		it 'a single channel', ->
 			client.join "#furry"
@@ -205,7 +239,7 @@ describe 'node-irc-client', ->
 				server: "irc.ircnet.net"
 				nick: "Cage"
 				verbose: false
-			client.handleReply ":irc.ircnet.net 001 Cage :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+			client.handleReply ":irc.ircnet.net 001 Cage :Welcome to the IRCNet Internet Relay Chat Network Cage"
 
 		it 'a single channel', ->
 			client.part "#furry"
@@ -423,3 +457,29 @@ describe 'node-irc-client', ->
 				client._.disconnecting.should.be.true
 				client.handleReply "ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)"
 				client._.disconnecting.should.be.false
+
+		describe 'kick', ->
+			it 'should emit a kick event', (done) ->
+				client.once 'kick', async(done) (chan, nick, kicker, reason) ->
+					chan.should.equal "#persia"
+					nick.should.equal "messenger"
+					kicker.should.equal "KingLeonidas"
+					should.not.exist reason
+					done()
+				client.handleReply ":KingLeonidas!jto@tolsun.oulu.fi KICK #persia messenger"
+			it 'should emit a kick event with a reason', (done) ->
+				client.once 'kick', async(done) (chan, nick, kicker, reason) ->
+					chan.should.equal "#persia"
+					nick.should.equal "messenger"
+					kicker.should.equal "KingLeonidas"
+					reason.should.equal "THIS IS SPARTA!"
+					done()
+				client.handleReply ":KingLeonidas!jto@tolsun.oulu.fi KICK #persia messenger :THIS IS SPARTA!"
+
+		describe 'quit', ->
+			it 'should emit a quit event', (done) ->
+				client.once 'quit', async(done) (nick, reason) ->
+					nick.should.equal "PhilFish"
+					reason.should.equal "Choke on it."
+					done()
+				client.handleReply ":PhilFish!kalt@millennium.stealth.net QUIT :Choke on it."

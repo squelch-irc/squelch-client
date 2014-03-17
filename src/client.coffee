@@ -124,6 +124,23 @@ class Client extends EventEmitter
 		@log "-> #{msg}"
 		@conn.write msg + "\r\n"
 
+
+	###
+	Sends a message (PRIVMSG) to the target.
+	@param target [String] The target to send the message to. Can be user or channel or whatever else the IRC specification allows.
+	@param msg [String] The message to send.
+	###
+	msg: (target, msg) ->
+		@raw "PRIVMSG #{target} :#{msg}"
+
+	###
+	Sends an action to the target.
+	@param target [String] The target to send the message to. Can be user or channel or whatever else the IRC specification allows.
+	@param msg [String] The action to send.
+	###
+	action: (target, msg) ->
+		@msg target, "\u0001ACTION #{msg}\u0001"
+
 	###
 	@overload #nick()
 	  Gets the client's current nickname.
@@ -272,8 +289,9 @@ class Client extends EventEmitter
 				when "PART"
 					nick = parsedReply.parseHostmaskFromPrefix().nickname
 					chan = parsedReply.params[0]
-					@emit "part", chan, nick
-					@emit "part#{chan}", chan, nick
+					reason = parsedReply.params[1]
+					@emit "part", chan, nick, reason
+					@emit "part#{chan}", chan, nick, reason
 					# Because no one likes case sensitivity
 					if chan.toLowerCase() isnt chan
 						@emit "part#{chan.toLowerCase()}", chan, nick
@@ -287,8 +305,12 @@ class Client extends EventEmitter
 					kicker = parsedReply.parseHostmaskFromPrefix().nickname
 					chan = parsedReply.params[0]
 					nick = parsedReply.params[1]
-					reason = parsedReply.params[2] if parsedReply.params[2]?
+					reason = parsedReply.params[2]
 					@emit "kick", chan, nick, kicker, reason
+				when "QUIT"
+					nick = parsedReply.parseHostmaskFromPrefix().nickname
+					reason = parsedReply.params[0]
+					@emit "quit", nick, reason
 				when "PING"
 					@raw "PONG :#{parsedReply.params[0]}"
 				when "ERROR"
@@ -344,8 +366,8 @@ Events so far
 
 join: (chan, nick)
 join#chan: (chan, nick)
-part: (chan, nick)
-part#chan: (chan, nick)
+part: (chan, nick, reason)
+part#chan: (chan, nick, reason)
 kick: (chan, nick, kicker, reason)
 connect: (nick)
 nick: (old, new)
@@ -353,4 +375,5 @@ raw: (parsedReply)
 motd: (motd)
 error: (msg)
 disconnect: ()
+quit: (nick, reason)
 ###
