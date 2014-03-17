@@ -111,7 +111,38 @@ describe 'node-irc-client', ->
 			client.handleReply "ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Choke on it.)"
 			# client.isConnected().should.be.false
 
+	describe 'verbose', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.somewhere.net"
+				nick: "Rando"
+				verbose: false
+		it 'should return the right value', ->
+			client.verbose().should.be.false
+			client.opt.verbose.should.be.false
+		it 'should set the right value', ->
+			client.verbose true
+			client.verbose().should.be.true
+			client.opt.verbose.should.be.true
 
+	describe 'kick', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.somewhere.net"
+				nick: "KingLeonidas"
+				verbose: false
+		it 'with single chan and nick', ->
+			client.kick "#persia", "messenger"
+			client.happened("KICK #persia messenger").should.be.true
+		it 'with multiple chans and nicks', ->
+			client.kick ["#persia", "#empire"], ["messenger1", "messenger2", "messenger3"]
+			client.happened("KICK #persia,#empire messenger1,messenger2,messenger3").should.be.true
+		it 'with a reason', ->
+			client.kick "#persia", "messenger", "THIS IS SPARTA!"
+			client.happened("KICK #persia messenger :THIS IS SPARTA!").should.be.true
+			
 	describe 'nick', ->
 		client = null
 		beforeEach ->

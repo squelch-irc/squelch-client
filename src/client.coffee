@@ -136,10 +136,8 @@ class Client extends EventEmitter
 	@todo Accept optional callback like Kurea does.
 	###
 	nick: (desiredNick) ->
-		if desiredNick?
-			@raw "NICK #{desiredNick}"
-		else
-			return @_.nick
+		return @_.nick if not desiredNick?
+		@raw "NICK #{desiredNick}"
 
 	###
 	@overload #join(chan)
@@ -222,6 +220,41 @@ class Client extends EventEmitter
 	isConnected: -> return @_.connected
 
 	###
+	@overload #kick(chan, nick)
+	  Kicks a user from a channel.
+
+	  @param chan [String, Array] The channel or array of channels to kick in
+	  @param nick [String, Array] The channel or array of nicks to kick
+
+	@overload #kick(chan, nick, reason)
+	  Kicks a user from a channel with a reason.
+
+	  @param chan [String, Array] The channel or array of channels to kick in
+	  @param nick [String, Array] The channel or array of nicks to kick
+	  @param reason [String] The reason to give when kicking
+	###
+	kick: (chan, user, comment) ->
+		chan = chan.join() if chan instanceof Array
+		user = user.join() if user instanceof Array
+		if comment?
+			comment = " :" + comment
+		else
+			comment = ""
+		@raw "KICK #{chan} #{user}#{comment}"
+
+	###
+	@overload #verbose()
+	  Getter for "verbose" in options.
+	  @return [Boolean] the value of verbose
+	@overload #verbose(value)
+	  Setter for "verbose"
+	  @param value [Boolean] The value of verbose to set
+	###
+	verbose: (enabled) ->
+		return @opt.verbose if not enabled?
+		@opt.verbose = enabled
+
+	###
 	@nodoc
 	###
 	handleReply: (reply) ->
@@ -250,6 +283,12 @@ class Client extends EventEmitter
 					if oldnick is @nick()
 						@_.nick = newnick
 					@emit "nick", oldnick, newnick
+				when "KICK"
+					kicker = parsedReply.parseHostmaskFromPrefix().nickname
+					chan = parsedReply.params[0]
+					nick = parsedReply.params[1]
+					reason = parsedReply.params[2] if parsedReply.params[2]?
+					@emit "kick", chan, nick, kicker, reason
 				when "PING"
 					@raw "PONG :#{parsedReply.params[0]}"
 				when "ERROR"
@@ -297,9 +336,6 @@ class Client extends EventEmitter
 					else
 						@disconnect()
 		@emit "raw", parsedReply
-	# emit: (args...) ->
-	# 	@log "!! Emitting #{args}"
-	# 	super args...
 
 module.exports = Client
 
@@ -310,6 +346,7 @@ join: (chan, nick)
 join#chan: (chan, nick)
 part: (chan, nick)
 part#chan: (chan, nick)
+kick: (chan, nick, kicker, reason)
 connect: (nick)
 nick: (old, new)
 raw: (parsedReply)
