@@ -301,6 +301,14 @@ class Client extends EventEmitter
 					if oldnick is @nick()
 						@_.nick = newnick
 					@emit "nick", oldnick, newnick
+				when "PRIVMSG"
+					from = parsedReply.parseHostmaskFromPrefix().nickname
+					to = parsedReply.params[0]
+					msg = parsedReply.params[1]
+					if msg.lastIndexOf("\u0001ACTION", 0) is 0 # startsWith
+						@emit "action", from, to, msg.substring(8, msg.length-1)
+					else
+						@emit "msg", from, to, msg
 				when "KICK"
 					kicker = parsedReply.parseHostmaskFromPrefix().nickname
 					chan = parsedReply.params[0]
@@ -376,4 +384,6 @@ motd: (motd)
 error: (msg)
 disconnect: ()
 quit: (nick, reason)
+action: (from, to, msg)
+msg: (from, to, msg)
 ###

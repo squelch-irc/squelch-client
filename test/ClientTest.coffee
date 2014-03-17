@@ -483,3 +483,21 @@ describe 'node-irc-client', ->
 					reason.should.equal "Choke on it."
 					done()
 				client.handleReply ":PhilFish!kalt@millennium.stealth.net QUIT :Choke on it."
+
+		describe 'msg', ->
+			it 'should emit an msg event', (done) ->
+				client.once 'msg', async(done) (from, to, msg) ->
+					from.should.equal "PhilFish"
+					to.should.equal "#indiegames"
+					msg.should.equal "Choke on it."
+					done()
+				client.handleReply ":PhilFish!kalt@millennium.stealth.net PRIVMSG #indiegames :Choke on it."
+
+		describe 'action', ->
+			it 'should emit an action event', (done) ->
+				client.once 'action', async(done) (from, to, action) ->
+					from.should.equal "PhilFish"
+					to.should.equal "#indiegames"
+					action.should.equal "chokes on it."
+					done()
+				client.handleReply ":PhilFish!kalt@millennium.stealth.net PRIVMSG #indiegames :\u0001ACTION chokes on it.\u0001"
