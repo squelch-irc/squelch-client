@@ -142,6 +142,14 @@ class Client extends EventEmitter
 		@msg target, "\u0001ACTION #{msg}\u0001"
 
 	###
+	Sends a notice to the target.
+	@param target [String] The target to send the notice to. Can be user or channel or whatever else the IRC specification allows.
+	@param msg [String] The message to send.
+	###
+	notice: (target, msg) ->
+		@raw "NOTICE #{target} :#{msg}"
+
+	###
 	@overload #nick()
 	  Gets the client's current nickname.
 	  @return [String] The bot's current nickname.
@@ -309,6 +317,14 @@ class Client extends EventEmitter
 						@emit "action", from, to, msg.substring(8, msg.length-1)
 					else
 						@emit "msg", from, to, msg
+				when "NOTICE"
+					if parsedReply.prefixIsHostmask()
+						from = parsedReply.parseHostmaskFromPrefix().nickname
+					else
+						from = parsedReply.prefix
+					to = parsedReply.params[0]
+					msg = parsedReply.params[1]
+					@emit "notice", from, to, msg
 				when "KICK"
 					kicker = parsedReply.parseHostmaskFromPrefix().nickname
 					chan = parsedReply.params[0]
@@ -386,4 +402,5 @@ disconnect: ()
 quit: (nick, reason)
 action: (from, to, msg)
 msg: (from, to, msg)
+notice: (from, to, msg)
 ###

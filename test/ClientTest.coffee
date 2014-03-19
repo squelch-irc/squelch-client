@@ -193,6 +193,23 @@ describe 'node-irc-client', ->
 				"PRIVMSG HotGurl22 :\u0001ACTION shows u camel\u0001"
 			]).should.be.true
 
+	describe 'notice', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.ircnet.net"
+				nick: "PakaluPapito"
+				verbose: false
+			client.handleReply ":irc.ircnet.net 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+
+		it 'should send a NOTICE', ->
+			client.notice "#girls", "u want to see gas station"
+			client.notice "HotGurl22", "i show u gas station"
+			client.happened([
+				"NOTICE #girls :u want to see gas station"
+				"NOTICE HotGurl22 :i show u gas station"
+			]).should.be.true
+
 	describe 'join', ->
 		client = null
 		beforeEach ->
@@ -485,7 +502,7 @@ describe 'node-irc-client', ->
 				client.handleReply ":PhilFish!kalt@millennium.stealth.net QUIT :Choke on it."
 
 		describe 'msg', ->
-			it 'should emit an msg event', (done) ->
+			it 'should emit a msg event', (done) ->
 				client.once 'msg', async(done) (from, to, msg) ->
 					from.should.equal "PhilFish"
 					to.should.equal "#indiegames"
@@ -501,3 +518,18 @@ describe 'node-irc-client', ->
 					action.should.equal "chokes on it."
 					done()
 				client.handleReply ":PhilFish!kalt@millennium.stealth.net PRIVMSG #indiegames :\u0001ACTION chokes on it.\u0001"
+		describe 'notice', ->
+			it 'should emit a notice event', (done) ->
+				client.once 'notice', async(done) (from, to, msg) ->
+					from.should.equal "Stranger"
+					to.should.equal "PakaluPapito"
+					msg.should.equal "I'll hurt you."
+					done()
+				client.handleReply ":Stranger!kalt@millennium.stealth.net NOTICE PakaluPapito :I'll hurt you."
+			it 'should emit a notice event from a server correctly', (done) ->
+				client.once 'notice', async(done) (from, to, msg) ->
+					from.should.equal "irc.ircnet.net"
+					to.should.equal "*"
+					msg.should.equal "*** Looking up your hostname..."
+					done()
+				client.handleReply ":irc.ircnet.net NOTICE * :*** Looking up your hostname..."
