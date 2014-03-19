@@ -3,6 +3,13 @@ path = require "path"
 EventEmitter = require('events').EventEmitter
 parseMessage = require "irc-message"
 
+getSender = (parsedReply) ->
+	if parsedReply.prefixIsHostmask()
+		return parsedReply.parseHostmaskFromPrefix().nickname
+	else if parsedReply.prefix?
+		return parsedReply.prefix
+	return undefined
+
 defaultOpt =
 	port: 6667
 	nick: "NodeIRCClient"
@@ -267,6 +274,9 @@ class Client extends EventEmitter
 			comment = ""
 		@raw "KICK #{chan} #{user}#{comment}"
 
+	invite: (nick, chan) ->
+		@raw "INVITE #{nick} #{chan}"
+
 	###
 	@overload #verbose()
 	  Getter for "verbose" in options.
@@ -287,7 +297,7 @@ class Client extends EventEmitter
 		if parsedReply?
 			switch parsedReply.command
 				when "JOIN"
-					nick = parsedReply.parseHostmaskFromPrefix().nickname
+					nick = getSender parsedReply
 					chan = parsedReply.params[0]
 					@emit "join", chan, nick
 					@emit "join#{chan}", chan, nick
@@ -295,7 +305,7 @@ class Client extends EventEmitter
 					if chan.toLowerCase() isnt chan
 						@emit "join#{chan.toLowerCase()}", chan, nick
 				when "PART"
-					nick = parsedReply.parseHostmaskFromPrefix().nickname
+					nick = getSender parsedReply
 					chan = parsedReply.params[0]
 					reason = parsedReply.params[1]
 					@emit "part", chan, nick, reason
@@ -304,13 +314,13 @@ class Client extends EventEmitter
 					if chan.toLowerCase() isnt chan
 						@emit "part#{chan.toLowerCase()}", chan, nick
 				when "NICK"
-					oldnick = parsedReply.parseHostmaskFromPrefix().nickname
+					oldnick = getSender parsedReply
 					newnick = parsedReply.params[0]
 					if oldnick is @nick()
 						@_.nick = newnick
 					@emit "nick", oldnick, newnick
 				when "PRIVMSG"
-					from = parsedReply.parseHostmaskFromPrefix().nickname
+					from = getSender parsedReply
 					to = parsedReply.params[0]
 					msg = parsedReply.params[1]
 					if msg.lastIndexOf("\u0001ACTION", 0) is 0 # startsWith
@@ -318,21 +328,23 @@ class Client extends EventEmitter
 					else
 						@emit "msg", from, to, msg
 				when "NOTICE"
-					if parsedReply.prefixIsHostmask()
-						from = parsedReply.parseHostmaskFromPrefix().nickname
-					else
-						from = parsedReply.prefix
+					from = getSender parsedReply
 					to = parsedReply.params[0]
 					msg = parsedReply.params[1]
 					@emit "notice", from, to, msg
+				when "INVITE"
+					from = getSender parsedReply
+					# don't need to because you don't get invites for other ppl
+					chan = parsedReply.params[1]
+					@emit "invite", from, chan
 				when "KICK"
-					kicker = parsedReply.parseHostmaskFromPrefix().nickname
+					kicker = getSender parsedReply
 					chan = parsedReply.params[0]
 					nick = parsedReply.params[1]
 					reason = parsedReply.params[2]
 					@emit "kick", chan, nick, kicker, reason
 				when "QUIT"
-					nick = parsedReply.parseHostmaskFromPrefix().nickname
+					nick = getSender parsedReply
 					reason = parsedReply.params[0]
 					@emit "quit", nick, reason
 				when "PING"
@@ -403,4 +415,5 @@ quit: (nick, reason)
 action: (from, to, msg)
 msg: (from, to, msg)
 notice: (from, to, msg)
+invite: (from, chan)
 ###

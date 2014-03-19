@@ -249,6 +249,18 @@ describe 'node-irc-client', ->
 					done()
 				client.handleReply ":Cage!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #wizard"
 
+	describe 'invite', ->
+		client = null
+		beforeEach ->
+			client = new TestClient
+				server: "irc.ircnet.net"
+				nick: "PakaluPapito"
+				verbose: false
+			client.handleReply ":irc.ircnet.net 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+		it 'should send an INVITE', ->
+			client.invite "HotBabe99", "#gasstation"
+			client.happened("INVITE HotBabe99 #gasstation").should.be.true
+
 	describe 'part', ->
 		client = null
 		beforeEach ->
@@ -533,3 +545,10 @@ describe 'node-irc-client', ->
 					msg.should.equal "*** Looking up your hostname..."
 					done()
 				client.handleReply ":irc.ircnet.net NOTICE * :*** Looking up your hostname..."
+		describe 'invite', ->
+			it 'should emit an invite event', (done) ->
+				client.once 'invite', async(done) (from, chan) ->
+					from.should.equal "Angel"
+					chan.should.equal "#dust"
+					done()
+				client.handleReply ":Angel!wings@irc.org INVITE Wiz #dust"
