@@ -274,6 +274,31 @@ class Client extends EventEmitter
 			comment = ""
 		@raw "KICK #{chan} #{user}#{comment}"
 
+	mode: (chan, modeStr) ->
+		@raw "MODE #{chan} #{modeStr}"
+		# TODO: get the mode of a channel
+		# if modeStr instanceof Function
+		# 	@once 'mode', modeStr
+		# 	@raw "MODE #{chan}"
+		# else
+
+	op: (chan, user) ->
+		@mode chan, "+o #{user}"
+
+	deop: (chan, user) ->
+		@mode chan, "-o #{user}"
+
+	voice: (chan, user) ->
+		@mode chan, "+v #{user}"
+
+	devoice: (chan, user) ->
+		@mode chan, "-v #{user}"
+
+	###
+	Invites a user to a channel.
+	@param nick [String] The user to invite
+	@param chan [String] The channel to invite the user to
+	###
 	invite: (nick, chan) ->
 		@raw "INVITE #{nick} #{chan}"
 
@@ -343,6 +368,11 @@ class Client extends EventEmitter
 					nick = parsedReply.params[1]
 					reason = parsedReply.params[2]
 					@emit "kick", chan, nick, kicker, reason
+				# when "MODE"
+				# 	sender = getSender parsedReply
+				# 	chan = parsedReply.params[0]
+				# 	mode = parsedReply.params[1]
+				# 	@emit "mode", chan, sender, mode
 				when "QUIT"
 					nick = getSender parsedReply
 					reason = parsedReply.params[0]
@@ -416,4 +446,5 @@ action: (from, to, msg)
 msg: (from, to, msg)
 notice: (from, to, msg)
 invite: (from, chan)
+mode: (chan, sender, mode) (sender can be nick or server)
 ###
