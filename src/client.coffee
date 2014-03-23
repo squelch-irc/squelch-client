@@ -460,6 +460,10 @@ class Client extends EventEmitter
 					@_.channels[parsedReply.params[1]]._.topic = ""
 				when "332" #RPL_TOPIC
 					@_.channels[parsedReply.params[1]]._.topic = parsedReply.params[2]
+				when "333" #RPL_TOPICWHOTIME
+					chan = @_.channels[parsedReply.params[1]]
+					chan._.topicSetter = parsedReply.params[2]
+					chan._.topicTime = parsedReply.params[3]
 				when "353" #RPL_NAMREPLY
 					chan = @_.channels[parsedReply.params[2]]
 					names = parsedReply.params[3].split " "

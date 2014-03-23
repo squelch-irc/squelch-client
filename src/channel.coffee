@@ -4,6 +4,8 @@ class Channel
 			client: client
 			name: name
 			topic: ""
+			topicSetter: ""
+			topicTime: null
 			users: {}
 		@_.client.raw "TOPIC #{@_.name}"
 	name: ->
@@ -15,8 +17,15 @@ class Channel
 	client: ->
 		return @_.client
 
-	topic: ->
-		return @_.topic
+	topic: (topic) ->
+		return @_.topic  if not topic?
+		@_.client.raw "TOPIC #{@_.name} #{topic}"
+
+	topicSetter: ->
+		return @_.topicSetter
+
+	topicTime: ->
+		return @_.topicTime
 
 	kick: (user, comment) ->
 		@_.client.kick @_.name, user, comment
