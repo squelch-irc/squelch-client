@@ -12,6 +12,7 @@ TODO: Tests that need writing:
 		kick
 		part
 		Updating the topic
+		Updating users
 ###
 
 class TestClient extends Client

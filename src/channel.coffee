@@ -1,43 +1,55 @@
 class Channel
-	constructor: (bot, name) ->
+	constructor: (client, name) ->
 		@_ =
-			bot: bot
+			client: client
 			name: name
 			topic: ""
-			users: []
-		@_.bot.raw "TOPIC #{@_.name}"
+			users: {}
+		@_.client.raw "TOPIC #{@_.name}"
 	name: ->
 		return @_.name
 
 	toString: ->
 		return @_.name
 
-	bot: ->
-		return @_.bot
+	client: ->
+		return @_.client
 
 	topic: ->
 		return @_.topic
 
 	kick: (user, comment) ->
-		@_.bot.kick @_.name, user, comment
+		@_.client.kick @_.name, user, comment
 
 	mode: (modeStr) ->
-		@_.bot.mode modeStr
+		@_.client.mode modeStr
 		# TODO: See client.mode()
 
 	op: (user) ->
-		@_.bot.op @_.name, user
+		@_.client.op @_.name, user
 
 	deop: (user) ->
-		@_.bot.deop @_.name, user
+		@_.client.deop @_.name, user
 
 	voice: (user) ->
-		@_.bot.voice @_.name, user
+		@_.client.voice @_.name, user
 
 	devoice: (user) ->
-		@_.bot.devoice @_.name, user
+		@_.client.devoice @_.name, user
 
 	msg: (msg) ->
-		@_.bot.msg @_.name, msg
+		@_.client.msg @_.name, msg
+
+	users: ->
+		return (nick for nick of @_.users)
+
+	ops: ->
+		return (nick for nick, status of @_.users when status is "@")
+
+	voices: ->
+		return (nick for nick, status of @_.users when status is "+")
+
+	normalUsers: ->
+		return (nick for nick, status of @_.users when status is "")
 
 module.exports = Channel

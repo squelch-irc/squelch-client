@@ -19,6 +19,7 @@ defaultOpt =
 	realname: "NodeIRCClient"
 	verbose: true
 	channels: []
+	users: []
 	autoNickChange: true
 	autoRejoin: false		#
 	autoConnect: true
@@ -51,7 +52,7 @@ class Client extends EventEmitter
 			numRetries: 0
 			connected: false
 			disconnecting: false
-			channels: []
+			channels: {}
 			iSupport: {}
 			greeting: {}
 		if not opt?
@@ -319,11 +320,18 @@ class Client extends EventEmitter
 	###
 	Gets the Channel object if the bot is in that channel.
 	@param name [String] The name of the channel
-	@return The Channel object, or undefined if the bot is not in that channel.
+	@return [Boolean] The Channel object, or undefined if the bot is not in that channel.
 	###
 	getChannel: (name) ->
-		return channel for channel in @_.channels when channel.name() is name
-		return null
+		return @_.channels[name]
+
+	###
+	Checks if the client is in the channel.
+	@param name [String] The name of the channel
+	@return [Boolean] true if the bot is in the given channel.
+	###
+	isInChannel: (name) ->
+		return getChannel[name] instanceof Channel
 
 
 	###
@@ -337,7 +345,9 @@ class Client extends EventEmitter
 					nick = getSender parsedReply
 					chan = parsedReply.params[0]
 					if nick is @nick()
-						@_.channels.push new Channel @, chan
+						@_.channels[chan] = new Channel @, chan
+					else
+						@_.channels[chan]._.users[nick] = ""
 					@emit "join", chan, nick
 					@emit "join#{chan}", chan, nick
 					# Because no one likes case sensitivity
@@ -348,9 +358,11 @@ class Client extends EventEmitter
 					chan = parsedReply.params[0]
 					reason = parsedReply.params[1]
 					if nick is @nick()
-						console.log @_.channels[0] instanceof Channel
-						for channel, i in @_.channels when channel.name() is chan
-							@_.channels.splice i, 1
+						delete @_.channels[chan]
+					else
+						users = @_.channels[chan]._.users
+						for user of users when user is nick
+							delete users[nick]
 							break
 					@emit "part", chan, nick, reason
 					@emit "part#{chan}", chan, nick, reason
@@ -387,8 +399,12 @@ class Client extends EventEmitter
 					nick = parsedReply.params[1]
 					reason = parsedReply.params[2]
 					if nick is @nick()
-						for channel, i in @_.channels when channel.name() is chan
-							@_.channels.splice i, 1
+						delete @_.channels[chan]
+					else
+						users = @_.channels[chan]._.users
+						for user of users when user is nick
+							delete users[nick]
+							break
 					@emit "kick", chan, nick, kicker, reason
 				# when "MODE"
 				# 	sender = getSender parsedReply
@@ -399,14 +415,18 @@ class Client extends EventEmitter
 					nick = getSender parsedReply
 					reason = parsedReply.params[0]
 					if nick is @nick() # Dunno if this ever happens.
-						for channel, i in @_.channels when channel.name() is chan
-							@_.channels.splice i, 1
+						delete @_.channels[chan]
+					else
+						for chan in @_.channels
+							for user of chan._.users when user is nick
+								delete chan._.users[nick]
+								break
 					@emit "quit", nick, reason
 				when "PING"
 					@raw "PONG :#{parsedReply.params[0]}"
 				when "ERROR"
 					@conn.destroy()
-					@_.channels = []
+					@_.channels = {}
 					@conn = null
 					@_.connected = false
 					@emit "error", parsedReply.params[0] if not @_.disconnecting
@@ -437,9 +457,17 @@ class Client extends EventEmitter
 							@_.iSupport[split[0]] = split[1]
 
 				when "331" #RPL_NOTOPIC
-					@getChannel(parsedReply.params[1])._.topic = ""
-				when "332"
-					@getChannel(parsedReply.params[1])._.topic = parsedReply.params[2]
+					@_.channels[parsedReply.params[1]]._.topic = ""
+				when "332" #RPL_TOPIC
+					@_.channels[parsedReply.params[1]]._.topic = parsedReply.params[2]
+				when "353" #RPL_NAMREPLY
+					chan = @_.channels[parsedReply.params[2]]
+					names = parsedReply.params[3].split " "
+					for name in names
+						if name[0] is "@" or name[0] is "+"
+							chan._.users[name[1..]] = name[0]
+						else
+							chan._.users[name] = ""
 				when "372" #RPL_MOTD
 					@_.MOTD += parsedReply.params[1] + "\r\n"
 				when "375" # RPL_MOTDSTART
