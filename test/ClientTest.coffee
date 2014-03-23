@@ -4,6 +4,15 @@ should = chai.should()
 
 Client = require '../src/client'
 
+###
+TODO: Tests that need writing:
+	client.mode and all it's op/voice variants
+	Keeping track of channels
+		join
+		kick
+		part
+		Updating the topic
+###
 
 class TestClient extends Client
 	constructor: (opt) ->

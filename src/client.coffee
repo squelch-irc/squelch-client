@@ -3,6 +3,8 @@ path = require "path"
 EventEmitter = require('events').EventEmitter
 parseMessage = require "irc-message"
 
+Channel = require './channel'
+
 getSender = (parsedReply) ->
 	if parsedReply.prefixIsHostmask()
 		return parsedReply.parseHostmaskFromPrefix().nickname
@@ -265,14 +267,14 @@ class Client extends EventEmitter
 	  @param nick [String, Array] The channel or array of nicks to kick
 	  @param reason [String] The reason to give when kicking
 	###
-	kick: (chan, user, comment) ->
+	kick: (chan, user, reason) ->
 		chan = chan.join() if chan instanceof Array
 		user = user.join() if user instanceof Array
-		if comment?
-			comment = " :" + comment
+		if reason?
+			reason = " :" + reason
 		else
-			comment = ""
-		@raw "KICK #{chan} #{user}#{comment}"
+			reason = ""
+		@raw "KICK #{chan} #{user}#{reason}"
 
 	mode: (chan, modeStr) ->
 		@raw "MODE #{chan} #{modeStr}"
@@ -315,6 +317,16 @@ class Client extends EventEmitter
 		@opt.verbose = enabled
 
 	###
+	Gets the Channel object if the bot is in that channel.
+	@param name [String] The name of the channel
+	@return The Channel object, or undefined if the bot is not in that channel.
+	###
+	getChannel: (name) ->
+		return channel for channel in @_.channels when channel.name() is name
+		return null
+
+
+	###
 	@nodoc
 	###
 	handleReply: (reply) ->
@@ -324,6 +336,8 @@ class Client extends EventEmitter
 				when "JOIN"
 					nick = getSender parsedReply
 					chan = parsedReply.params[0]
+					if nick is @nick()
+						@_.channels.push new Channel @, chan
 					@emit "join", chan, nick
 					@emit "join#{chan}", chan, nick
 					# Because no one likes case sensitivity
@@ -333,6 +347,11 @@ class Client extends EventEmitter
 					nick = getSender parsedReply
 					chan = parsedReply.params[0]
 					reason = parsedReply.params[1]
+					if nick is @nick()
+						console.log @_.channels[0] instanceof Channel
+						for channel, i in @_.channels when channel.name() is chan
+							@_.channels.splice i, 1
+							break
 					@emit "part", chan, nick, reason
 					@emit "part#{chan}", chan, nick, reason
 					# Because no one likes case sensitivity
@@ -367,6 +386,9 @@ class Client extends EventEmitter
 					chan = parsedReply.params[0]
 					nick = parsedReply.params[1]
 					reason = parsedReply.params[2]
+					if nick is @nick()
+						for channel, i in @_.channels when channel.name() is chan
+							@_.channels.splice i, 1
 					@emit "kick", chan, nick, kicker, reason
 				# when "MODE"
 				# 	sender = getSender parsedReply
@@ -376,11 +398,15 @@ class Client extends EventEmitter
 				when "QUIT"
 					nick = getSender parsedReply
 					reason = parsedReply.params[0]
+					if nick is @nick() # Dunno if this ever happens.
+						for channel, i in @_.channels when channel.name() is chan
+							@_.channels.splice i, 1
 					@emit "quit", nick, reason
 				when "PING"
 					@raw "PONG :#{parsedReply.params[0]}"
 				when "ERROR"
 					@conn.destroy()
+					@_.channels = []
 					@conn = null
 					@_.connected = false
 					@emit "error", parsedReply.params[0] if not @_.disconnecting
@@ -410,6 +436,10 @@ class Client extends EventEmitter
 						else
 							@_.iSupport[split[0]] = split[1]
 
+				when "331" #RPL_NOTOPIC
+					@getChannel(parsedReply.params[1])._.topic = ""
+				when "332"
+					@getChannel(parsedReply.params[1])._.topic = parsedReply.params[2]
 				when "372" #RPL_MOTD
 					@_.MOTD += parsedReply.params[1] + "\r\n"
 				when "375" # RPL_MOTDSTART
