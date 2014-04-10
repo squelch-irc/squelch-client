@@ -5,6 +5,7 @@ class Channel
 			name: name
 			topic: ""
 			users: {}
+			mode: []
 		@_.client.raw "TOPIC #{@_.name}"
 	name: ->
 		return @_.name

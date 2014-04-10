@@ -5,13 +5,6 @@ parseMessage = require "irc-message"
 
 Channel = require './channel'
 
-getSender = (parsedReply) ->
-	if parsedReply.prefixIsHostmask()
-		return parsedReply.parseHostmaskFromPrefix().nickname
-	else if parsedReply.prefix?
-		return parsedReply.prefix
-	return undefined
-
 defaultOpt =
 	port: 6667
 	nick: "NodeIRCClient"
@@ -25,6 +18,13 @@ defaultOpt =
 	autoConnect: true
 	autoSplitMessage: true	#
 	messageDelay: 1000		#
+
+getSender = (parsedReply) ->
+	if parsedReply.prefixIsHostmask()
+		return parsedReply.parseHostmaskFromPrefix().nickname
+	else if parsedReply.prefix?
+		return parsedReply.prefix
+	return undefined
 
 ###
 An IRC Client.
@@ -55,6 +55,11 @@ class Client extends EventEmitter
 			channels: {}
 			iSupport: {}
 			greeting: {}
+			# default values in case there's no iSupport
+			prefix: 
+				o: "@"
+				v: "+"
+			chanmodes: ["beI", "k", "l", "aimnpqsrt"]
 		if not opt?
 			throw new Error "No options argument given."
 		if typeof opt is "string"
@@ -280,10 +285,6 @@ class Client extends EventEmitter
 	mode: (chan, modeStr) ->
 		@raw "MODE #{chan} #{modeStr}"
 		# TODO: get the mode of a channel
-		# if modeStr instanceof Function
-		# 	@once 'mode', modeStr
-		# 	@raw "MODE #{chan}"
-		# else
 
 	op: (chan, user) ->
 		@mode chan, "+o #{user}"
@@ -331,8 +332,10 @@ class Client extends EventEmitter
 	@return [Boolean] true if the bot is in the given channel.
 	###
 	isInChannel: (name) ->
-		return getChannel[name] instanceof Channel
+		return getChannel(name) instanceof Channel
 
+	isChannel: (chan) ->
+		return @_.iSupport["CHANTYPES"].indexOf(chan[0]) isnt -1
 
 	###
 	@nodoc
@@ -406,11 +409,46 @@ class Client extends EventEmitter
 							delete users[nick]
 							break
 					@emit "kick", chan, nick, kicker, reason
-				# when "MODE"
-				# 	sender = getSender parsedReply
-				# 	chan = parsedReply.params[0]
-				# 	mode = parsedReply.params[1]
-				# 	@emit "mode", chan, sender, mode
+				when "MODE"
+					sender = getSender parsedReply
+					chan = parsedReply.params[0]
+					user = chan if not @isChannel(chan)
+					modes = parsedReply.params[1]
+					params = parsedReply.params[2..] if parsedReply.params.length > 2
+					adding = true
+					for c in modes
+						if c is "+"
+							adding = true
+							continue
+						if c is "-"
+							adding = false
+							continue
+						if not user? # We're dealin with a real deal channel mode
+							param = undefined
+							# Cases where mode has param
+							if @_.chanmodes[0].indexOf(c) isnt -1 or
+							@_.chanmodes[1].indexOf(c) isnt -1 or
+							(adding and @_.chanmodes[2].indexOf(c) isnt -1) or
+							@_.prefix[c]?
+								param = params.shift()
+							if @_.prefix[c]? # Update user's mode in channel
+								@getChannel(chan)._.users[param] = if adding then @_.prefix[c] else ""
+							else # Update channel mode
+								channelModes = @getChannel(chan)._.mode
+								if adding
+									channelModes.push c
+								if not adding 
+									index = channelModes.indexOf c
+									channelModes[index..index] = [] if index isnt -1
+							@emit "+mode", chan, sender, c, param if adding
+							@emit "-mode", chan, sender, c, param if not adding
+						else # We're dealing with some stupid user mode
+							# Ain't no one got time to keep track of user modes
+							@emit "+usermode", user, c, sender if adding
+							@emit "-usermode", user, c, sender if not adding
+
+
+					# @emit "mode", chan, sender, mode
 				when "QUIT"
 					nick = getSender parsedReply
 					reason = parsedReply.params[0]
@@ -439,14 +477,12 @@ class Client extends EventEmitter
 					@emit "connect", @_.nick
 					@join @opt.channels
 
-				# These are kinda useless and trivial
-				# when "002" # RPL_YOURHOST
-				# 	@_.greeting.yourHost = parsedReply.params[1]
-				# when "003" # RPL_CREATED
-				# 	@_.greeting.created = parsedReply.params[1]
-				# when "004" # RPL_MYINFO
-				# 	@_.greeting.myInfo = parsedReply.params[1..].join " "
-
+				when "002" # RPL_YOURHOST
+					@_.greeting.yourHost = parsedReply.params[1]
+				when "003" # RPL_CREATED
+					@_.greeting.created = parsedReply.params[1]
+				when "004" # RPL_MYINFO
+					@_.greeting.myInfo = parsedReply.params[1..].join " "
 				when "005" # RPL_ISUPPORT because we can
 					for item in parsedReply.params[1..]
 						continue if item.indexOf(" ") isnt -1
@@ -455,12 +491,22 @@ class Client extends EventEmitter
 							@_.iSupport[item] = true
 						else
 							@_.iSupport[split[0]] = split[1]
-
+						switch split[0]
+							when "PREFIX"
+								match = /\((.+)\)(.+)/.exec(split[1])
+								@_.prefix = {}
+								@_.prefix[match[1][i]] = match[2][i] for i in [0...match[1].length]
+							when "CHANMODES"
+								@_.chanmodes = split[1].split ","
+								# chanmodes[0,1] always require param
+								# chanmodes[2] requires param on set
+								# chanmodes[3] never require param
+								
 				when "331" #RPL_NOTOPIC
 					@_.channels[parsedReply.params[1]]._.topic = ""
 				when "332" #RPL_TOPIC
 					@_.channels[parsedReply.params[1]]._.topic = parsedReply.params[2]
-				when "353" #RPL_NAMREPLY
+				when "353" #RPL_NAMREPLY)
 					chan = @_.channels[parsedReply.params[2]]
 					names = parsedReply.params[3].split " "
 					for name in names
@@ -504,5 +550,6 @@ action: (from, to, msg)
 msg: (from, to, msg)
 notice: (from, to, msg)
 invite: (from, chan)
-mode: (chan, sender, mode) (sender can be nick or server)
++/-mode: (chan, sender, mode, param) (sender can be nick or server) (param depends on mode)
++/-usermode: (user, mode, sender)
 ###
