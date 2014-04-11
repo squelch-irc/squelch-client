@@ -7,6 +7,7 @@ class Channel
 			topicSetter: ""
 			topicTime: null
 			users: {}
+			mode: []
 		@_.client.raw "TOPIC #{@_.name}"
 	name: ->
 		return @_.name
