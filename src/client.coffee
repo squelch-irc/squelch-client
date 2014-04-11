@@ -455,7 +455,7 @@ class Client extends EventEmitter
 					if nick is @nick() # Dunno if this ever happens.
 						delete @_.channels[chan.toLowerCase()]
 					else
-						for chan in @_.channels
+						for name, chan of @_.channels
 							for user of chan._.users when user is nick
 								delete chan._.users[nick]
 								break
@@ -496,6 +496,8 @@ class Client extends EventEmitter
 								match = /\((.+)\)(.+)/.exec(split[1])
 								@_.prefix = {}
 								@_.prefix[match[1][i]] = match[2][i] for i in [0...match[1].length]
+								@_.reversePrefix = {}
+								@_.reversePrefix[match[2][i]] = match[1][i] for i in [0...match[1].length]
 							when "CHANMODES"
 								@_.chanmodes = split[1].split ","
 								# chanmodes[0,1] always require param
@@ -509,12 +511,12 @@ class Client extends EventEmitter
 				when "333" #RPL_TOPICWHOTIME
 					chan = @_.channels[parsedReply.params[1].toLowerCase()]
 					chan._.topicSetter = parsedReply.params[2]
-					chan._.topicTime = parsedReply.params[3]
+					chan._.topicTime = new Date parseInt(parsedReply.params[3])
 				when "353" #RPL_NAMREPLY
 					chan = @_.channels[parsedReply.params[2].toLowerCase()]
 					names = parsedReply.params[3].split " "
 					for name in names
-						if name[0] is "@" or name[0] is "+"
+						if @_.reversePrefix[name[0]]?
 							chan._.users[name[1..]] = name[0]
 						else
 							chan._.users[name] = ""

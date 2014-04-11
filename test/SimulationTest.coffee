@@ -45,14 +45,51 @@ describe 'handleReply simulations', ->
 			":PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy"
 			":availo.esper.net 332 PakaluPapito #sexy :Welcome to the #sexy!"
 			":availo.esper.net 333 PakaluPapito #sexy KR!~KR@78-72-225-13-no193.business.telia.com 1394457068"
-			":availo.esper.net 353 PakaluPapito * #sexy :PakaluPapito @KR Freek +Kurea Chase"
+			":availo.esper.net 353 PakaluPapito * #sexy :PakaluPapito @KR Freek +Kurea Chase ^Freek"
 			":availo.esper.net 366 PakaluPapito #kellyirc :End of /NAMES list."
 			":PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #Furry"
 			":availo.esper.net 332 PakaluPapito #Furry :Welcome to the #Furry! We have furries."
-			":availo.esper.net 333 PakaluPapito #Furry NotKR!~NotKR@78-72-225-13-no193.business.telia.com 1394457068"
+			":availo.esper.net 333 PakaluPapito #Furry NotKR!~NotKR@78-72-225-13-no193.business.telia.com 1394457070"
 			":availo.esper.net 353 PakaluPapito * #Furry :PakaluPapito @abcdeFurry +Bud"
 			":availo.esper.net 366 PakaluPapito #kellyirc :End of /NAMES list."
 		]
+
+	it 'should read the iSupport values correctly', ->
+		client._.iSupport["CHANTYPES"] = "#"
+		client._.iSupport["CASEMAPPING"] = "rfc1459"
+
+	it 'should know what a channel is (isChannel)', ->
+		client.isChannel("#burp").should.be.true
+		client.isChannel("Clarence").should.be.false
+		client.isChannel("&burp").should.be.false
+
+	describe 'channel objects', ->
+		it 'should have created one for #sexy and #Furry', ->
+			client._.channels["#sexy"].should.exist
+			client._.channels["#sexy"].name().should.equal "#sexy"
+			client._.channels["#sexy"].topic().should.equal "Welcome to the #sexy!"
+			client._.channels["#sexy"].topicSetter().should.equal "KR!~KR@78-72-225-13-no193.business.telia.com"
+			client._.channels["#sexy"].topicTime().getTime().should.equal 1394457068
+			client._.channels["#sexy"]._.users["KR"].should.equal "@"
+			client._.channels["#sexy"]._.users["Kurea"].should.equal "+"
+			client._.channels["#sexy"]._.users["Chase"].should.equal ""
+			should.not.exist client._.channels["#sexy"]._.users["Bud"]
+
+			client._.channels["#furry"].should.exist
+			client._.channels["#furry"].should.exist
+			client._.channels["#furry"].name().should.equal "#Furry"
+			client._.channels["#furry"].topic().should.equal "Welcome to the #Furry! We have furries."
+			client._.channels["#furry"].topicSetter().should.equal "NotKR!~NotKR@78-72-225-13-no193.business.telia.com"
+			client._.channels["#furry"].topicTime().getTime().should.equal 1394457070
+			# eh good enough
+
+	it 'should know the nick prefixes and chanmodes', ->
+		client._.prefix.o.should.equal "@"
+		client._.prefix.v.should.equal "+"
+		client._.chanmodes[0].should.equal "eIbq"
+		client._.chanmodes[1].should.equal "k"
+		client._.chanmodes[2].should.equal "flj"
+		client._.chanmodes[3].should.equal "CFPcgimnpstz"
 
 	describe 'raw', ->
 		it 'should emit raw event for a reply', (done) ->
@@ -128,12 +165,22 @@ describe 'handleReply simulations', ->
 			client.happened("PONG :FFFFFFFFBD03A0B0").should.be.true
 
 	describe 'join', ->
+		it 'should add the user to the channel', ->
+			client.handleReply ":HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy"
+			client.getChannel("#sexy").users().indexOf("HotGurl").should.not.equal -1
+
+		it 'should create the channel if it is the client', ->
+			should.not.exist client.getChannel("#gasstation")
+			client.handleReply ":PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com JOIN #gasstation"
+			client.getChannel("#gasstation").should.exist
+
 		it 'should emit a join event', (done) ->
 			client.once 'join', async(done) (chan, nick) ->
 				chan.should.equal "#sexy"
 				nick.should.equal "HotGurl"
 				done()
 			client.handleReply ":HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy"
+			client.getChannel("#sexy").users().indexOf("HotGurl").should.not.equal -1
 
 		it 'should emit a join#chan event', (done) ->
 			client.once 'join#sexy', async(done) (chan, nick) ->
@@ -150,6 +197,16 @@ describe 'handleReply simulations', ->
 			client.handleReply ":PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com JOIN #testChan"
 
 	describe 'part', ->
+		it 'should remove the user from the channels users', ->
+			client.getChannel("#sexy").users().indexOf("KR").should.not.equal -1
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com PART #sexy"
+			client.getChannel("#sexy").users().indexOf("KR").should.equal -1
+
+		it 'should remove the channel if the nick is the client', ->
+			client.getChannel("#sexy").should.exist
+			client.handleReply ":PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com PART #sexy"
+			should.not.exist client.getChannel("#sexy")
+
 		it 'should emit a part event', (done) ->
 			client.once 'part', async(done) (chan, nick) ->
 				chan.should.equal "#sexy"
@@ -200,6 +257,16 @@ describe 'handleReply simulations', ->
 			client._.disconnecting.should.be.false
 
 	describe 'kick', ->
+		it 'should remove the user from the channels users', ->
+			client.getChannel("#sexy").users().indexOf("Freek").should.not.equal -1
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #sexy Freek"
+			client.getChannel("#sexy").users().indexOf("Freek").should.equal -1
+
+		it 'should remove the channel if the nick is the client', ->
+			client.getChannel("#sexy").should.exist
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #sexy PakaluPapito"
+			should.not.exist client.getChannel("#sexy")
+
 		it 'should emit a kick event', (done) ->
 			client.once 'kick', async(done) (chan, nick, kicker, reason) ->
 				chan.should.equal "#sexy"
@@ -218,6 +285,11 @@ describe 'handleReply simulations', ->
 			client.handleReply ":KR!jto@tolsun.oulu.fi KICK #sexy Freek :THIS IS SPARTA!"
 
 	describe 'quit', ->
+		it 'should remove the user from the channels they are in', ->
+			client.getChannel("#sexy").users().indexOf("Chase").should.not.equal -1
+			client.handleReply ":Chase!kalt@millennium.stealth.net QUIT :Choke on it."
+			client.getChannel("#sexy").users().indexOf("Chase").should.equal -1
+
 		it 'should emit a quit event', (done) ->
 			client.once 'quit', async(done) (nick, reason) ->
 				nick.should.equal "Chase"

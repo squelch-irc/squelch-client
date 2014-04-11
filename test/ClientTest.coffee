@@ -4,16 +4,6 @@ should = chai.should()
 
 Client = require '../src/client'
 TestClient = require './TestClient'
-###
-TODO: Tests that need writing:
-	client.mode and all it's op/voice variants
-	Keeping track of channels
-		join
-		kick
-		part
-		Updating the topic
-		Updating users
-###
 
 ###
 Thank you KR https://gist.github.com/raymond-h/709801d9f3816ff8f157#file-test-util-coffee
