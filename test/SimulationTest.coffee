@@ -336,3 +336,90 @@ describe 'handleReply simulations', ->
 				chan.should.equal "#dust"
 				done()
 			client.handleReply ":Angel!wings@irc.org INVITE PakaluPapito #dust"
+	describe 'mode', ->
+		it 'should emit a +mode event for +n (type D mode)', (done) ->
+			client.once '+mode', async(done) (chan, sender, mode, param) ->
+				chan.should.equal "#sexy"
+				sender.should.equal "irc.ircnet.net"
+				mode.should.equal "n"
+				should.not.exist param
+				done()
+			client.handleReply ":irc.ircnet.net MODE #sexy +n"
+
+		it 'should emit a +mode event for +o with param (prefix mode)', (done) ->
+			client.once '+mode', async(done) (chan, sender, mode, param) ->
+				chan.should.equal "#sexy"
+				sender.should.equal "KR"
+				mode.should.equal "o"
+				console.log client._.prefix
+				param.should.equal "Freek"
+				done()
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy +o Freek"
+
+		it 'should emit a -mode event for -b with param (type A mode)', (done) ->
+			client.once '-mode', async(done) (chan, sender, mode, param) ->
+				chan.should.equal "#sexy"
+				sender.should.equal "KR"
+				mode.should.equal "b"
+				param.should.equal "RK!*@*"
+				done()
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -b RK!*@*"
+
+		it 'should emit a -mode event for -k with param (type B mode)', (done) ->
+			client.once '-mode', async(done) (chan, sender, mode, param) ->
+				chan.should.equal "#sexy"
+				sender.should.equal "KR"
+				mode.should.equal "k"
+				param.should.equal "password"
+				done()
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -k password"
+
+		it 'should emit a +mode event for +l with param (type C mode)', (done) ->
+			client.once '+mode', async(done) (chan, sender, mode, param) ->
+				chan.should.equal "#sexy"
+				sender.should.equal "KR"
+				mode.should.equal "l"
+				param.should.equal "25"
+				done()
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy +l 25"
+
+		it 'should emit a -mode event for -l without param (type C mode)', (done) ->
+			client.once '-mode', async(done) (chan, sender, mode, param) ->
+				chan.should.equal "#sexy"
+				sender.should.equal "KR"
+				mode.should.equal "l"
+				should.not.exist param
+				done()
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -l"
+
+		it 'should update the users status in the channel object for +o', ->
+			client.getChannel("#sexy")._.users["Freek"].should.equal ""
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy +o Freek"
+			client.getChannel("#sexy")._.users["Freek"].should.equal "@"
+
+		it 'should update the users status in the channel object for +v', ->
+			client.getChannel("#sexy")._.users["Chase"].should.equal ""
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy +v Chase"
+			client.getChannel("#sexy")._.users["Chase"].should.equal "+"
+
+		it 'should update the users status in the channel object for -v', ->
+			client.getChannel("#sexy")._.users["Kurea"].should.equal "+"
+			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -v Kurea"
+			client.getChannel("#sexy")._.users["Kurea"].should.equal ""
+
+	describe 'usermode', ->
+		it 'should emit +usermode for modes on users', (done) ->
+			client.once '+usermode', async(done) (user, mode, sender) ->
+				user.should.equal "Freek"
+				mode.should.equal "o"
+				sender.should.equal "CoolIRCOp"
+				done()
+			client.handleReply ":CoolIRCOp!~wow@cpe-76-183-227-155.tx.res.rr.com MODE Freek +o"
+
+		it 'should emit -usermode for modes on users', (done) ->
+			client.once '-usermode', async(done) (user, mode, sender) ->
+				user.should.equal "Freek"
+				mode.should.equal "o"
+				sender.should.equal "CoolIRCOp"
+				done()
+			client.handleReply ":CoolIRCOp!~wow@cpe-76-183-227-155.tx.res.rr.com MODE Freek -o"
