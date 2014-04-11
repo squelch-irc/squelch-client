@@ -283,8 +283,8 @@ class Client extends EventEmitter
 		@raw "KICK #{chan} #{user}#{reason}"
 
 	mode: (chan, modeStr) ->
+		return getChannel(chan).mode() if not modeStr?
 		@raw "MODE #{chan} #{modeStr}"
-		# TODO: get the mode of a channel
 
 	op: (chan, user) ->
 		@mode chan, "+o #{user}"

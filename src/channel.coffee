@@ -32,8 +32,8 @@ class Channel
 		@_.client.kick @_.name, user, comment
 
 	mode: (modeStr) ->
+		return @mode.join("") if not modeStr?
 		@_.client.mode modeStr
-		# TODO: See client.mode()
 
 	op: (user) ->
 		@_.client.op @_.name, user
