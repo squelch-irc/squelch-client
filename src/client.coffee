@@ -56,7 +56,7 @@ class Client extends EventEmitter
 			iSupport: {}
 			greeting: {}
 			# default values in case there's no iSupport
-			prefix: 
+			prefix:
 				o: "@"
 				v: "+"
 			chanmodes: ["beI", "k", "l", "aimnpqsrt"]
@@ -324,7 +324,7 @@ class Client extends EventEmitter
 	@return [Boolean] The Channel object, or undefined if the bot is not in that channel.
 	###
 	getChannel: (name) ->
-		return @_.channels[name]
+		return @_.channels[name.toLowerCase()]
 
 	###
 	Checks if the client is in the channel.
@@ -348,9 +348,9 @@ class Client extends EventEmitter
 					nick = getSender parsedReply
 					chan = parsedReply.params[0]
 					if nick is @nick()
-						@_.channels[chan] = new Channel @, chan
+						@_.channels[chan.toLowerCase()] = new Channel @, chan
 					else
-						@_.channels[chan]._.users[nick] = ""
+						@_.channels[chan.toLowerCase()]._.users[nick] = ""
 					@emit "join", chan, nick
 					@emit "join#{chan}", chan, nick
 					# Because no one likes case sensitivity
@@ -361,9 +361,9 @@ class Client extends EventEmitter
 					chan = parsedReply.params[0]
 					reason = parsedReply.params[1]
 					if nick is @nick()
-						delete @_.channels[chan]
+						delete @_.channels[chan.toLowerCase()]
 					else
-						users = @_.channels[chan]._.users
+						users = @_.channels[chan.toLowerCase()]._.users
 						for user of users when user is nick
 							delete users[nick]
 							break
@@ -402,9 +402,9 @@ class Client extends EventEmitter
 					nick = parsedReply.params[1]
 					reason = parsedReply.params[2]
 					if nick is @nick()
-						delete @_.channels[chan]
+						delete @_.channels[chan.toLowerCase()]
 					else
-						users = @_.channels[chan]._.users
+						users = @_.channels[chan.toLowerCase()]._.users
 						for user of users when user is nick
 							delete users[nick]
 							break
@@ -437,7 +437,7 @@ class Client extends EventEmitter
 								channelModes = @getChannel(chan)._.mode
 								if adding
 									channelModes.push c
-								if not adding 
+								if not adding
 									index = channelModes.indexOf c
 									channelModes[index..index] = [] if index isnt -1
 							@emit "+mode", chan, sender, c, param if adding
@@ -453,7 +453,7 @@ class Client extends EventEmitter
 					nick = getSender parsedReply
 					reason = parsedReply.params[0]
 					if nick is @nick() # Dunno if this ever happens.
-						delete @_.channels[chan]
+						delete @_.channels[chan.toLowerCase()]
 					else
 						for chan in @_.channels
 							for user of chan._.users when user is nick
@@ -503,15 +503,15 @@ class Client extends EventEmitter
 								# chanmodes[3] never require param
 								
 				when "331" #RPL_NOTOPIC
-					@_.channels[parsedReply.params[1]]._.topic = ""
+					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ""
 				when "332" #RPL_TOPIC
-					@_.channels[parsedReply.params[1]]._.topic = parsedReply.params[2]
+					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = parsedReply.params[2]
 				when "333" #RPL_TOPICWHOTIME
-					chan = @_.channels[parsedReply.params[1]]
+					chan = @_.channels[parsedReply.params[1].toLowerCase()]
 					chan._.topicSetter = parsedReply.params[2]
 					chan._.topicTime = parsedReply.params[3]
 				when "353" #RPL_NAMREPLY
-					chan = @_.channels[parsedReply.params[2]]
+					chan = @_.channels[parsedReply.params[2].toLowerCase()]
 					names = parsedReply.params[3].split " "
 					for name in names
 						if name[0] is "@" or name[0] is "+"
