@@ -282,6 +282,12 @@ class Client extends EventEmitter
 			reason = ""
 		@raw "KICK #{chan} #{user}#{reason}"
 
+	ban: (chan, hostmask) ->
+		@mode chan, "+b #{hostmask}"
+
+	unban: (chan, hostmask) ->
+		@mode chan, "-b #{hostmask}"
+
 	mode: (chan, modeStr) ->
 		return getChannel(chan).mode() if not modeStr?
 		@raw "MODE #{chan} #{modeStr}"

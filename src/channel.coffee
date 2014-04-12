@@ -31,6 +31,12 @@ class Channel
 	kick: (user, comment) ->
 		@_.client.kick @_.name, user, comment
 
+	ban: (hostmask) ->
+		@_.client.ban @_.name, hostmask
+
+	unban: (hostmask) ->
+		@_.client.unban @_.name, hostmask
+
 	mode: (modeStr) ->
 		return @mode.join("") if not modeStr?
 		@_.client.mode modeStr
