@@ -4,6 +4,7 @@ class TestClient extends Client
 	constructor: (opt) ->
 		self = @
 		opt.autoConnect = false
+		opt.messageDelay = 0
 		super opt
 		@rawLog = []
 		@conn =

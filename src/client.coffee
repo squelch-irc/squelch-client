@@ -52,6 +52,7 @@ class Client extends EventEmitter
 			numRetries: 0
 			connected: false
 			disconnecting: false
+			messageQueue: []
 			channels: {}
 			iSupport: {}
 			greeting: {}
@@ -99,9 +100,9 @@ class Client extends EventEmitter
 				@conn = null
 				@_.connected = false
 
-			@raw "PASS #{@opt.password}" if @opt.password?
-			@raw "NICK #{@opt.nick}"
-			@raw "USER #{@opt.username} 8 * :#{@opt.realname}"
+			@raw "PASS #{@opt.password}", false if @opt.password?
+			@raw "NICK #{@opt.nick}", false
+			@raw "USER #{@opt.username} 8 * :#{@opt.realname}", false
 
 	###
 	@overload #disconnect()
@@ -123,9 +124,9 @@ class Client extends EventEmitter
 			reason = undefined
 		@_.disconnecting = true
 		if reason?
-			@raw "QUIT :#{reason}"
+			@raw "QUIT :#{reason}", false
 		else
-			@raw "QUIT"
+			@raw "QUIT", false
 		if cb instanceof Function
 			@once "disconnect", ->
 				cb()
@@ -134,11 +135,25 @@ class Client extends EventEmitter
 	###
 	Sends a raw message to the server. Automatically appends "\r\n".
 	@param msg [String] The raw message to send.
+	@param delay [Boolean] If false, the message skips the message queue and is sent right away. Defaults to true.
 	###
-	raw: (msg) ->
+	raw: (msg, delay = true) ->
+		if not delay or @opt.messageDelay is 0
+			@log "-> #{msg}"
+			@conn.write msg + "\r\n"
+		else
+			setTimeout @dequeue, 0 if @_.messageQueue.length is 0
+			@_.messageQueue.push msg
+		
+	###
+	@nodoc
+	Sends a raw message on the message queue
+	###
+	dequeue: () =>
+		msg = @_.messageQueue.shift()
 		@log "-> #{msg}"
 		@conn.write msg + "\r\n"
-
+		setTimeout @dequeue, @opt.messageDelay if @_.messageQueue.length isnt 0
 
 	###
 	Sends a message (PRIVMSG) to the target.
@@ -189,7 +204,6 @@ class Client extends EventEmitter
 					cb undefined, oldNick, newNick
 			errListener = (msg) ->
 				if 431 <= parseInt(msg.command) <= 436 # irc errors for nicks
-					console.log msg
 					removeListeners()
 					cb msg
 
@@ -348,6 +362,15 @@ class Client extends EventEmitter
 		@opt.verbose = enabled
 
 	###
+	Returns the channel objects of all channels the client is in.
+	The array is a shallow copy, so modify it if you want.
+	However, avoid modifying the private values in the channels themselves.
+	@return [Array] The array of all channels the client is in.
+	###
+	channels: () ->
+		return (channel for channel in @_.channels)
+
+	###
 	Gets the Channel object if the bot is in that channel.
 	@param name [String] The name of the channel
 	@return [Boolean] The Channel object, or undefined if the bot is not in that channel.
@@ -490,7 +513,7 @@ class Client extends EventEmitter
 								break
 					@emit "quit", nick, reason
 				when "PING"
-					@raw "PONG :#{parsedReply.params[0]}"
+					@raw "PONG :#{parsedReply.params[0]}", false
 				when "ERROR"
 					@conn.destroy()
 					@_.channels = {}
