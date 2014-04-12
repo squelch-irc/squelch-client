@@ -135,6 +135,29 @@ describe 'nick', ->
 		client.nick "PricklyPear"
 		client.happened("NICK PricklyPear").should.be.true
 
+	it 'with two params should callback on success', (done) ->
+		client.nick "PricklyPear", async(done) (err, oldNick, newNick) ->
+			should.not.exist err
+			oldNick.should.equal "Cage"
+			newNick.should.equal "PricklyPear"
+			client.listeners('nick').length.should.equal 0
+			client.listeners('raw').length.should.equal 0
+			done()
+		client.happened("NICK PricklyPear").should.be.true
+		client.handleReply ":Cage!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com NICK :PricklyPear"
+
+	it 'with two params should callback on error 432', (done) ->
+		client.nick "!@#$%^&*()", async(done) (err, oldNick, newNick) ->
+			err.command.should.equal "432"
+			should.not.exist oldNick
+			should.not.exist newNick
+			client.listeners('nick').length.should.equal 0
+			client.listeners('raw').length.should.equal 0
+			done()
+		client.happened("NICK !@#$%^&*()").should.be.true
+		client.handleReply ":irc.ircnet.net 432 Cage !@#$%^&*() :Erroneous Nickname"
+
+
 describe 'msg', ->
 	client = null
 	beforeEach ->

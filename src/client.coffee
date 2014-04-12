@@ -173,10 +173,33 @@ class Client extends EventEmitter
 	  Changes the client's nickname.
 	  @param desiredNick [String] The new nickname to change to.
 
+	@overload #nick(desiredNick, cb)
+	  Changes the client's nickname, with a callback for success or failure.
+	  @param desiredNick [String] The new nickname to change to.
+	  @param cb [function] (err, old, new) If successful, err will be undefined, otherwise err will be the parsed message object of the error
+
 	@todo Accept optional callback like Kurea does.
 	###
-	nick: (desiredNick) ->
+	nick: (desiredNick, cb) ->
 		return @_.nick if not desiredNick?
+		if cb instanceof Function
+			nickListener = (oldNick, newNick) ->
+				if newNick is desiredNick
+					removeListeners()
+					cb undefined, oldNick, newNick
+			errListener = (msg) ->
+				if 431 <= parseInt(msg.command) <= 436 # irc errors for nicks
+					console.log msg
+					removeListeners()
+					cb msg
+
+			removeListeners = =>
+				@removeListener 'raw', errListener
+				@removeListener 'nick', nickListener
+
+			@on 'nick', nickListener
+			@on 'raw', errListener
+
 		@raw "NICK #{desiredNick}"
 
 	###
