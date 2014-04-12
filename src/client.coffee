@@ -16,8 +16,8 @@ defaultOpt =
 	autoNickChange: true
 	autoRejoin: false		#
 	autoConnect: true
-	autoSplitMessage: true	#
-	messageDelay: 1000		#
+	autoSplitMessage: true	
+	messageDelay: 1000		
 
 getSender = (parsedReply) ->
 	if parsedReply.prefixIsHostmask()
@@ -43,7 +43,7 @@ class Client extends EventEmitter
 	@option opt [Boolean] autoNickChange Whether this should try alternate nicks if the given one is taken, or give up and quit. Default: true
 	@option opt [Boolean] autoRejoin Whether this should automatically rejoin channels it was kicked from. Default: false
 	@option opt [Boolean] autoConnect Whether this should automatically connect after being created or not. Default: true
-	@option opt [Boolean] autoSplitMessage Whether this should automatically split outgoing messages. Default: true
+	@option opt [Boolean] autoSplitMessage Whether this should automatically split outgoing messages. Default: true NOTE: This will split the messages conservatively. Message lengths will be around 400-ish.
 	@option opt [Integer] messageDelay How long to throttle between outgoing messages. Default: 1000
 
 	###
@@ -156,12 +156,31 @@ class Client extends EventEmitter
 		setTimeout @dequeue, @opt.messageDelay if @_.messageQueue.length isnt 0
 
 	###
+	@nodoc
+	Splits message into array of safely sized chunks
+	Include the target in the command
+	###
+	splitText: (command, msg) ->
+		limit = 512 -
+			3 - 					# :!@
+			@_.nick.length - 		# nick of hostmask
+			9 - 					# max username
+			65 - 					# max hostname
+			command.length - 	# command
+			2 - 					# " :" before msg
+			2 						# /r/n
+		return (msg.slice(i, i+limit) for i in [0..msg.length] by limit)
+			
+	###
 	Sends a message (PRIVMSG) to the target.
 	@param target [String] The target to send the message to. Can be user or channel or whatever else the IRC specification allows.
 	@param msg [String] The message to send.
 	###
 	msg: (target, msg) ->
-		@raw "PRIVMSG #{target} :#{msg}"
+		if @opt.autoSplitMessage
+			@raw "PRIVMSG #{target} #{line}" for line in @splitText "PRIVMSG #{target}", msg
+		else
+			@raw "PRIVMSG #{target} :#{msg}"
 
 	###
 	Sends an action to the target.
@@ -169,7 +188,10 @@ class Client extends EventEmitter
 	@param msg [String] The action to send.
 	###
 	action: (target, msg) ->
-		@msg target, "\u0001ACTION #{msg}\u0001"
+		if @opt.autoSplitMessage
+			@raw "\u1ACTION #{line}\u1" for line in @splitText "\u1ACTION\u1", msg
+		else
+			@msg target, "\u1ACTION #{msg}\u1"
 
 	###
 	Sends a notice to the target.
@@ -177,7 +199,10 @@ class Client extends EventEmitter
 	@param msg [String] The message to send.
 	###
 	notice: (target, msg) ->
-		@raw "NOTICE #{target} :#{msg}"
+		if @opt.autoSplitMessage
+			@raw "NOTICE #{target} :#{line}" for line in @splitText "NOTICE #{target}", msg
+		else
+			@raw "NOTICE #{target} :#{msg}"
 
 	###
 	@overload #nick()
@@ -361,6 +386,14 @@ class Client extends EventEmitter
 		return @opt.verbose if not enabled?
 		@opt.verbose = enabled
 
+	messageDelay: (value) ->
+		return @opt.messageDelay if not value?
+		@opt.messageDelay = value
+
+	autoSplitMessage: (enabled) ->
+		return @opt.autoSplitMessage if not enabled?
+		@opt.autoSplitMessage = enabled
+
 	###
 	Returns the channel objects of all channels the client is in.
 	The array is a shallow copy, so modify it if you want.
@@ -368,7 +401,7 @@ class Client extends EventEmitter
 	@return [Array] The array of all channels the client is in.
 	###
 	channels: () ->
-		return (channel for channel in @_.channels)
+		return @_.channels.slice(0) # shallow copy
 
 	###
 	Gets the Channel object if the bot is in that channel.
