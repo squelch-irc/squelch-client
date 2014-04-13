@@ -18,11 +18,8 @@ defaultOpt =
 	autoConnect: true
 	autoSplitMessage: true
 	messageDelay: 1000
-<<<<<<< HEAD
 	stripColors: true
 	stripStyles: true
-=======
->>>>>>> 7060862657e9ae1aef853b5a7375b6bee82114af
 
 getSender = (parsedReply) ->
 	if parsedReply.prefixIsHostmask()
@@ -433,7 +430,7 @@ class Client extends EventEmitter
 		return @_.iSupport["CHANTYPES"].indexOf(chan[0]) isnt -1
 
 	stripColors: (str) ->
-		return str.replace /(\x03\d{0,2}(,\d{0,2})?)/g, ''
+		return str.replace /(\x03(\d{0,2}(,\d{0,2})?))?/g, ''
 
 	stripStyles: (str) ->
 		return str.replace /[\x0F\x02\x16\x1F]/g, ''
