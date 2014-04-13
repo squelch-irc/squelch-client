@@ -18,8 +18,11 @@ defaultOpt =
 	autoConnect: true
 	autoSplitMessage: true
 	messageDelay: 1000
+<<<<<<< HEAD
 	stripColors: true
 	stripStyles: true
+=======
+>>>>>>> 7060862657e9ae1aef853b5a7375b6bee82114af
 
 getSender = (parsedReply) ->
 	if parsedReply.prefixIsHostmask()
