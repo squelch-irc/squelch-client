@@ -178,7 +178,7 @@ class Client extends EventEmitter
 	###
 	msg: (target, msg) ->
 		if @opt.autoSplitMessage
-			@raw "PRIVMSG #{target} #{line}" for line in @splitText "PRIVMSG #{target}", msg
+			@raw "PRIVMSG #{target} :#{line}" for line in @splitText "PRIVMSG #{target}", msg
 		else
 			@raw "PRIVMSG #{target} :#{msg}"
 
