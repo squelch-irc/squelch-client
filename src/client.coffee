@@ -14,10 +14,12 @@ defaultOpt =
 	channels: []
 	users: []
 	autoNickChange: true
-	autoRejoin: false		#
+	autoRejoin: false
 	autoConnect: true
 	autoSplitMessage: true
 	messageDelay: 1000
+	stripColors: true
+	stripStyles: true
 
 getSender = (parsedReply) ->
 	if parsedReply.prefixIsHostmask()
@@ -45,6 +47,8 @@ class Client extends EventEmitter
 	@option opt [Boolean] autoConnect Whether this should automatically connect after being created or not. Default: true
 	@option opt [Boolean] autoSplitMessage Whether this should automatically split outgoing messages. Default: true NOTE: This will split the messages conservatively. Message lengths will be around 400-ish.
 	@option opt [Integer] messageDelay How long to throttle between outgoing messages. Default: 1000
+	@option opt [Boolean] stripColors Strips colors from incoming messages before processing. Default: true
+	@option opt [Boolean] stripStyles Strips styles from incoming messages before processing, like bold and underline. Default: true
 
 	###
 	constructor: (opt) ->
@@ -92,7 +96,6 @@ class Client extends EventEmitter
 					cb(nick)
 			@log "Connected"
 			@conn.on "data", (data) =>
-				@log data.toString()
 				for line in data.toString().split "\r\n"
 					@handleReply line
 			@conn.on "close", =>
@@ -394,6 +397,10 @@ class Client extends EventEmitter
 		return @opt.autoSplitMessage if not enabled?
 		@opt.autoSplitMessage = enabled
 
+	autoRejoin: (enabled) ->
+		return @opt.autoRejoin if not enabled?
+		@opt.autoRejoin = enabled
+
 	###
 	Returns the channel objects of all channels the client is in.
 	The array is a shallow copy, so modify it if you want.
@@ -422,10 +429,24 @@ class Client extends EventEmitter
 	isChannel: (chan) ->
 		return @_.iSupport["CHANTYPES"].indexOf(chan[0]) isnt -1
 
+	stripColors: (str) ->
+		return str.replace /(\x03\d{0,2}(,\d{0,2})?)/g, ''
+
+	stripStyles: (str) ->
+		return str.replace /[\x0F\x02\x16\x1F]/g, ''
+
+	stripColorsAndStyles: (str) ->
+		return stripColors stripStyles str
+
 	###
 	@nodoc
 	###
 	handleReply: (reply) ->
+		if @opt.stripColors
+			reply = @stripColors reply
+		if @opt.stripStyles
+			reply = @stripStyles reply
+		@log reply
 		parsedReply = parseMessage reply
 		if parsedReply?
 			switch parsedReply.command
@@ -447,6 +468,7 @@ class Client extends EventEmitter
 					reason = parsedReply.params[1]
 					if nick is @nick()
 						delete @_.channels[chan.toLowerCase()]
+						@join chan if @opt.autoRejoin
 					else
 						users = @_.channels[chan.toLowerCase()]._.users
 						for user of users when user is nick
@@ -488,6 +510,7 @@ class Client extends EventEmitter
 					reason = parsedReply.params[2]
 					if nick is @nick()
 						delete @_.channels[chan.toLowerCase()]
+						@join chan if @opt.autoRejoin
 					else
 						users = @_.channels[chan.toLowerCase()]._.users
 						for user of users when user is nick
@@ -538,7 +561,7 @@ class Client extends EventEmitter
 					nick = getSender parsedReply
 					reason = parsedReply.params[0]
 					if nick is @nick() # Dunno if this ever happens.
-						delete @_.channels[chan.toLowerCase()]
+						@_.channels = {}
 					else
 						for name, chan of @_.channels
 							for user of chan._.users when user is nick

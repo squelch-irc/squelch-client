@@ -28,8 +28,11 @@ class Channel
 	topicTime: ->
 		return @_.topicTime
 
-	kick: (user, comment) ->
-		@_.client.kick @_.name, user, comment
+	part: (reason, cb) ->
+		@_.client.part @_.name, reason, cb
+
+	kick: (user, reason) ->
+		@_.client.kick @_.name, user, reason
 
 	ban: (hostmask) ->
 		@_.client.ban @_.name, hostmask
