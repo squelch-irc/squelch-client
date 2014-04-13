@@ -16,8 +16,8 @@ defaultOpt =
 	autoNickChange: true
 	autoRejoin: false		#
 	autoConnect: true
-	autoSplitMessage: true	
-	messageDelay: 1000		
+	autoSplitMessage: true
+	messageDelay: 1000
 
 getSender = (parsedReply) ->
 	if parsedReply.prefixIsHostmask()
@@ -189,9 +189,9 @@ class Client extends EventEmitter
 	###
 	action: (target, msg) ->
 		if @opt.autoSplitMessage
-			@raw "\u1ACTION #{line}\u1" for line in @splitText "\u1ACTION\u1", msg
+			@raw "\u0001ACTION #{line}\u0001" for line in @splitText "\u0001ACTION\u0001", msg
 		else
-			@msg target, "\u1ACTION #{msg}\u1"
+			@msg target, "\u0001ACTION #{msg}\u0001"
 
 	###
 	Sends a notice to the target.
