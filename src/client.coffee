@@ -21,6 +21,10 @@ defaultOpt =
 	stripColors: true
 	stripStyles: true
 
+###
+@nodoc
+Helper method to get nick or server out of the prefix of a message
+###
 getSender = (parsedReply) ->
 	if parsedReply.prefixIsHostmask()
 		return parsedReply.parseHostmaskFromPrefix().nickname
@@ -31,6 +35,49 @@ getSender = (parsedReply) ->
 ###
 An IRC Client.
 @author Rahat Ahmed
+
+Client extends EventEmitter, so you can use the typical on or once functions with the following events.
+## Events
+ - **connect**: *(nick)*</br>
+	When the client successfully connects to the server. (Note: This is not just when the connection is made, but after the 001 welcome reply is received.)
+ - **disconnect**: *()*</br>
+	When the client is disconnected from the server. This happens either by error or by explicitly calling the disconnect function. If the client is explicitly disconnected, then there will NOT be an error event emitted.
+ - **error**: *(msg)*</br>
+	When an error occurs. This will disconnect the client and also emit a disconnect event.
+ - **nick**: *(old, new)*</br>
+	When someone changes their nick and is visible in a channel the client is in. Can be the client itself.
+ - **join**: *(chan, nick)*</br>
+	When a user joins a channel the client is in. Can be the client itself.
+ - **join#chan**: *(chan, nick)*</br>
+	When a user joins #chan. The client must be in #chan for this to work. Can be the client itself. If #chan has upper case letters like "#IRCHelp", it will trigger both join#IRCHelp and join#irchelp.
+ - **part**: *(chan, nick, reason)*</br>
+	When a user parts a channel the client is in. Can be the client itself.
+ - **part#chan**: *(chan, nick, reason)*</br>
+	When a user parts #chan. See the join#chan event above.
+ - **kick**: *(chan, nick, kicker, reason)*</br>
+	When a user is kicked from a channel the client is in. Reason is optional.
+ - **raw**: *(parsedMsg)*</br>
+	When any raw message is received. parsedMsg will be the object that the irc-message module returns from parsing the message.
+ - **motd**: *(motd)*</br>
+	When the server's motd is received.
+ - **quit**: *(nick, reason)*</br>
+	When someone quits from the server. This will not trigger for the client itself.
+ - **action**: *(from, to, msg)*</br>
+	When someone sends an action in a channel the client is in.
+ - **msg**: *(from, to, msg)*</br>
+	When someone sends a message to the client or a channel the client is in.
+ - **notice**: *(from, to, msg)*</br>
+	When someone sends a notice to the client.
+ - **invite**: *(from, chan)*</br>
+	When someone invites the client to a channel.
+ - **+mode**: *(chan, setter, mode, param)*</br>
+	When the mode is set in a channel. The mode parameter will only be a single mode. Param is optional, depending on the mode letter. The setter can be a nick or the server.
+ - **-mode**: *(chan, setter, mode, param)*</br>
+	When the mode is removed in a channel. The mode parameter will only be a single mode. Param is optional, depending on the mode letter. The setter can be a nick or the server.
+ - **+usermode**: *(user, mode, setter)*</br>
+	When the mode is set on a user. The mode parameter will only be a single mode. The setter can be a nick or the server.
+ - **-usermode**: *(user, mode, setter)*</br>
+	When the mode is removed from a user. The mode parameter will only be a single mode. The setter can be a nick or the server.
 ###
 class Client extends EventEmitter
 	###
@@ -133,6 +180,7 @@ class Client extends EventEmitter
 		if cb instanceof Function
 			@once "disconnect", ->
 				cb()
+
 
 
 	###
@@ -347,25 +395,60 @@ class Client extends EventEmitter
 			reason = ""
 		@raw "KICK #{chan} #{user}#{reason}"
 
+	###
+	Sets mode +b on a hostmask in a channel.
+	@param chan [String] The channel to set the mode in
+	@param hostmask [String] The hostmask to ban
+	###
 	ban: (chan, hostmask) ->
 		@mode chan, "+b #{hostmask}"
 
+	###
+	Sets mode -b on a hostmask in a channel.
+	@param chan [String] The channel to set the mode in
+	@param hostmask [String] The hostmask to unban
+	###
 	unban: (chan, hostmask) ->
 		@mode chan, "-b #{hostmask}"
 
+	###
+	Sets a given mode on a hostmask in a channel.
+	@param chan [String] The channel to set the mode in
+	@param modeStr [String] The modes and arguments to set for that channel
+	###
 	mode: (chan, modeStr) ->
 		return getChannel(chan).mode() if not modeStr?
 		@raw "MODE #{chan} #{modeStr}"
 
+	###
+	Sets mode +o on a user in a channel.
+	@param chan [String] The channel to set the mode in
+	@param user [String] The user to op
+	###
 	op: (chan, user) ->
 		@mode chan, "+o #{user}"
 
+	###
+	Sets mode -o on a user in a channel.
+	@param chan [String] The channel to set the mode in
+	@param user [String] The user to deop
+	###
 	deop: (chan, user) ->
 		@mode chan, "-o #{user}"
 
+	###
+	Sets mode +v on a user in a channel.
+	@param chan [String] The channel to set the mode in
+	@param user [String] The user to voice
+	###
 	voice: (chan, user) ->
 		@mode chan, "+v #{user}"
 
+	###
+	Sets mode -v on a user in a channel.
+	@param chan [String] The channel to set the mode in
+	@param user [String] The user to devoice
+	###
 	devoice: (chan, user) ->
 		@mode chan, "-v #{user}"
 
@@ -381,22 +464,46 @@ class Client extends EventEmitter
 	@overload #verbose()
 	  Getter for "verbose" in options.
 	  @return [Boolean] the value of verbose
-	@overload #verbose(value)
+	@overload #verbose(enabled)
 	  Setter for "verbose"
-	  @param value [Boolean] The value of verbose to set
+	  @param enabled [Boolean] The value of verbose to set
 	###
 	verbose: (enabled) ->
 		return @opt.verbose if not enabled?
 		@opt.verbose = enabled
 
+	###
+	@overload #messageDelay()
+	  Getter for "messageDelay" in options.
+	  @return [Boolean] the value of messageDelay
+	@overload #messageDelay(value)
+	  Setter for "messageDelay"
+	  @param value [Boolean] The value of messageDelay to set
+	###
 	messageDelay: (value) ->
 		return @opt.messageDelay if not value?
 		@opt.messageDelay = value
 
+	###
+	@overload #autoSplitMessage()
+	  Getter for "autoSplitMessage" in options.
+	  @return [Boolean] the value of autoSplitMessage
+	@overload #autoSplitMessage(enabled)
+	  Setter for "autoSplitMessage"
+	  @param enabled [Boolean] The value of autoSplitMessage to set
+	###
 	autoSplitMessage: (enabled) ->
 		return @opt.autoSplitMessage if not enabled?
 		@opt.autoSplitMessage = enabled
 
+	###
+	@overload #autoRejoin()
+	  Getter for "autoRejoin" in options.
+	  @return [Boolean] the value of autoRejoin
+	@overload #autoRejoin(enabled)
+	  Setter for "autoRejoin"
+	  @param enabled [Boolean] The value of autoRejoin to set
+	###
 	autoRejoin: (enabled) ->
 		return @opt.autoRejoin if not enabled?
 		@opt.autoRejoin = enabled
@@ -426,15 +533,38 @@ class Client extends EventEmitter
 	isInChannel: (name) ->
 		return getChannel(name) instanceof Channel
 
+	###
+	Checks if a string represents a channel, based on the CHANTYPES value
+	from the server's iSupport 005 response. Typically this means it checks
+	if the string starts with a "#".
+	@param chan [String] The string to check
+	@return [Boolean] true if chan starts with a valid channel prefix (ex: #), false otherwise
+	###
 	isChannel: (chan) ->
 		return @_.iSupport["CHANTYPES"].indexOf(chan[0]) isnt -1
 
+	###
+	Strips all colors from a string.
+	@param str [String] The string to strip.
+	@return [String] str with all colors stripped.
+	###
 	stripColors: (str) ->
-		return str.replace /(\x03(\d{0,2}(,\d{0,2})?))?/g, ''
+		return str.replace /(\x03\d{0,2}(,\d{0,2})?)/g, ''
 
+	###
+	Strips all styles from a string. This includes bold, underline, italics,
+	and normal.
+	@param str [String] The string to strip.
+	@return [String] str with all styles stripped.
+	###
 	stripStyles: (str) ->
 		return str.replace /[\x0F\x02\x16\x1F]/g, ''
 
+	###
+	Strips all colors and styles from a string.
+	@param str [String] The string to strip.
+	@return [String] str with all colors and styles stripped.
+	###
 	stripColorsAndStyles: (str) ->
 		return stripColors stripStyles str
 
@@ -644,26 +774,3 @@ class Client extends EventEmitter
 		@emit "raw", parsedReply
 
 module.exports = Client
-
-###
-Events so far
-
-join: (chan, nick)
-join#chan: (chan, nick)
-part: (chan, nick, reason)
-part#chan: (chan, nick, reason)
-kick: (chan, nick, kicker, reason)
-connect: (nick)
-nick: (old, new)
-raw: (parsedReply)
-motd: (motd)
-error: (msg)
-disconnect: ()
-quit: (nick, reason)
-action: (from, to, msg)
-msg: (from, to, msg)
-notice: (from, to, msg)
-invite: (from, chan)
-+/-mode: (chan, sender, mode, param) (sender can be nick or server) (param depends on mode)
-+/-usermode: (user, mode, sender)
-###
