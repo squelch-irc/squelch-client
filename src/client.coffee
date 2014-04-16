@@ -20,6 +20,9 @@ defaultOpt =
 	messageDelay: 1000
 	stripColors: true
 	stripStyles: true
+	autoReconnect: true
+	autoReconnectTries: 3
+	reconnectDelay: 5000
 
 ###
 @nodoc
@@ -96,6 +99,9 @@ class Client extends EventEmitter
 	@option opt [Integer] messageDelay How long to throttle between outgoing messages. Default: 1000
 	@option opt [Boolean] stripColors Strips colors from incoming messages before processing. Default: true
 	@option opt [Boolean] stripStyles Strips styles from incoming messages before processing, like bold and underline. Default: true
+	@option opt [Integer] reconnectDelay Time in milliseconds to wait before trying to reconnect.
+	@option opt [Boolean] autoReconnect Whether this should automatically attempt to reconnect on disconnecting from the server by error. If you explicitly call disconnect(), the client will not attempt to reconnect. This does NOT apply to the connect() retries.
+	@option opt [Integer] autoReconnectTries The number of attempts to reconnect if autoReconnect is enabled. If this is -1, then the client will try infinitely many times. This does NOT apply to the connect() retries.
 
 	###
 	constructor: (opt) ->
@@ -132,12 +138,36 @@ class Client extends EventEmitter
 	log: (msg) -> console.log msg if @opt.verbose
 
 	###
-	Connects to the server.
-	@param cb [Function] Optional callback to be called on "connect" event.
+	@overload #connect()
+	  Connects to the server.
+	@overload #connect(tries)
+	  Connects to the server.
+	  @param tries [Integer] Number of times to retry connecting. If -1, the client will try to connect infinitely many times.
+	@overload #connect(cb)
+	  Connects to the server.
+	  @param cb [Function] Optional callback to be called on "connect" event.
+	@overload #connect(tries, cb)
+	  Connects to the server.
+	  @param tries [Integer] Number of times to retry connecting. If -1, the client will try to connect infinitely many times.
+	  @param cb [Function] Optional callback to be called on "connect" event.
 	###
-	connect: (cb) ->
+	connect: (tries = 1, cb) ->
 		@log "Connecting..."
+		if tries instanceof Function
+			cb = tries
+			tries = 1
+		tries--
+
+		errorListener = (err) =>
+			console.error "Unable to connect."
+			console.error err
+			if tries > 0 or tries is -1
+				console.error "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
+				setTimeout =>
+					@connect tries, cb
+				, @opt.reconnectDelay
 		@conn = net.connect @opt.port, @opt.server, =>
+			@conn.removeListener 'error', errorListener
 			if cb instanceof Function
 				@once "connect", (nick) ->
 					cb(nick)
@@ -145,14 +175,17 @@ class Client extends EventEmitter
 			@conn.on "data", (data) =>
 				for line in data.toString().split "\r\n"
 					@handleReply line
-			@conn.on "close", =>
-				@conn.destroy()
-				@conn = null
-				@_.connected = false
-
+			# @conn.on "close", =>
+			# 	@log "closing"
+			@conn.on "error", =>
+				console.error "Disconnected by network error."
+				if @opt.autoReconnect and @opt.autoReconnectTries > 0
+					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
+					@connect @opt.autoReconnectTries
 			@raw "PASS #{@opt.password}", false if @opt.password?
 			@raw "NICK #{@opt.nick}", false
 			@raw "USER #{@opt.username} 8 * :#{@opt.realname}", false
+		@conn.once 'error', errorListener
 
 	###
 	@overload #disconnect()
@@ -708,7 +741,10 @@ class Client extends EventEmitter
 					@emit "error", parsedReply.params[0] if not @_.disconnecting
 					@emit "disconnect"
 					@_.disconnecting = false
-					@log "Disconnected"
+					@log "Disconnected from server"
+					if @opt.autoReconnect and @opt.autoReconnectTries > 0
+						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
+						@connect @opt.autoReconnectTries
 				when "001" # RPL_WELCOME
 					@_.connected = true
 					@_.nick = parsedReply.params[0]
