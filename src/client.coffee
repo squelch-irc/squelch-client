@@ -10,7 +10,7 @@ defaultOpt =
 	nick: "NodeIRCClient"
 	username: "NodeIRCClient"
 	realname: "NodeIRCClient"
-	verbose: true
+	verbose: false
 	channels: []
 	users: []
 	autoNickChange: true

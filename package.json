@@ -1,7 +1,12 @@
 {
   "name": "node-irc-client",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "An IRC client for Node.js",
+  "homepage": "https://github.com/rahatarmanahmed/node-irc-client",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/rahatarmanahmed/node-irc-client.git"
+  },
   "main": "dist/client.js",
   "dependencies": {
     "irc-message": "~1.0.0"
@@ -10,7 +15,6 @@
     "grunt": "~0.4.2",
     "grunt-contrib-coffee": "~0.7.0",
     "grunt-mocha-test": "~0.8.1",
-    "irc-message": "~1.0.0",
     "chai": "~1.9.0",
     "grunt-coffeelint": "0.0.8",
     "mocha": "~1.17.1",
@@ -18,9 +22,12 @@
     "grunt-codo": "~0.1.0"
   },
   "scripts": {
-    "test": "grunt test"
+    "test": "grunt test",
+    "doc": "grunt docs",
+    "build": "grunt build"
   },
   "keywords": [
+    "Internet Relay Chat",
     "irc",
     "client",
     "bot"

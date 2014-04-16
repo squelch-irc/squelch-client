@@ -351,7 +351,6 @@ describe 'handleReply simulations', ->
 				chan.should.equal "#sexy"
 				sender.should.equal "KR"
 				mode.should.equal "o"
-				console.log client._.prefix
 				param.should.equal "Freek"
 				done()
 			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy +o Freek"
