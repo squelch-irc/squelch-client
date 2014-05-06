@@ -1,6 +1,6 @@
 {
   "name": "node-irc-client",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "An IRC client for Node.js",
   "homepage": "https://github.com/rahatarmanahmed/node-irc-client",
   "repository": {
@@ -33,5 +33,5 @@
     "bot"
   ],
   "author": "Rahat Ahmed <rahatarmanahmed@gmail.com>",
-  "license": "EPL"
+  "license": "MIT"
 }
