@@ -1,4 +1,5 @@
 net = require "net"
+tls = require "tls"
 path = require "path"
 EventEmitter = require('events').EventEmitter
 parseMessage = require "irc-message"
@@ -23,6 +24,9 @@ defaultOpt =
 	autoReconnect: true
 	autoReconnectTries: 3
 	reconnectDelay: 5000
+	ssl: false
+	selfSigned: false
+	certificateExpired: false
 
 ###
 @nodoc
@@ -102,6 +106,9 @@ class Client extends EventEmitter
 	@option opt [Integer] reconnectDelay Time in milliseconds to wait before trying to reconnect.
 	@option opt [Boolean] autoReconnect Whether this should automatically attempt to reconnect on disconnecting from the server by error. If you explicitly call disconnect(), the client will not attempt to reconnect. This does NOT apply to the connect() retries.
 	@option opt [Integer] autoReconnectTries The number of attempts to reconnect if autoReconnect is enabled. If this is -1, then the client will try infinitely many times. This does NOT apply to the connect() retries.
+	@option opt [Boolean/Object] ssl Whether to use ssl to connect to the server. If ssl is an object, then it is used as the options for ssl connections (See tls.connect in 'tls' node module). Default: false
+	@option opt [Boolean] selfSigned Whether to accept self signed ssl certificates or not. Default: false
+	@option opt [Boolean] certificateExpired Whether to accept expired certificates or not. Default: false
 
 	###
 	constructor: (opt) ->
@@ -166,7 +173,8 @@ class Client extends EventEmitter
 				setTimeout =>
 					@connect tries, cb
 				, @opt.reconnectDelay
-		@conn = net.connect @opt.port, @opt.server, =>
+		onConnect = =>
+			@conn.setEncoding 'utf8'
 			@conn.removeListener 'error', errorListener
 			if cb instanceof Function
 				@once "connect", (nick) ->
@@ -181,10 +189,29 @@ class Client extends EventEmitter
 				console.error "Disconnected by network error."
 				if @opt.autoReconnect and @opt.autoReconnectTries > 0
 					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
-					@connect @opt.autoReconnectTries
+					setTimeout => 
+						@connect @opt.autoReconnectTries
+					, @opt.reconnectDelay
 			@raw "PASS #{@opt.password}", false if @opt.password?
 			@raw "NICK #{@opt.nick}", false
 			@raw "USER #{@opt.username} 8 * :#{@opt.realname}", false
+		if !!@opt.ssl
+			tlsOptions = if @opt.ssl instanceof Object then @opt.ssl else {}
+			tlsOptions.rejectUnauthorized = false if @opt.selfSigned
+			@conn = tls.connect @opt.port, @opt.server, tlsOptions, =>
+				if not @conn.authorized
+					if @opt.selfSigned and (@conn.authorizationError is 'DEPTH_ZERO_SELF_SIGNED_CERT' or
+										@conn.authorizationError is 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' or
+										@conn.authorizationError is 'SELF_SIGNED_CERT_IN_CHAIN')
+						@log "Connecting to server with self signed certificate"
+					else if @opt.certificateExpired and @conn.authorizationError is 'CERT_HAS_EXPIRED'
+						@log "Connecting to server with expired certificate"
+					else
+						@log "Authorization error: #{@conn.authorizationError}"
+						return
+				onConnect()
+		else
+			@conn = net.connect @opt.port, @opt.server, onConnect
 		@conn.once 'error', errorListener
 
 	###
@@ -744,7 +771,9 @@ class Client extends EventEmitter
 					@log "Disconnected from server"
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
 						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
-						@connect @opt.autoReconnectTries
+						setTimeout => 
+							@connect @opt.autoReconnectTries
+						, @opt.reconnectDelay
 				when "001" # RPL_WELCOME
 					@_.connected = true
 					@_.nick = parsedReply.params[0]
