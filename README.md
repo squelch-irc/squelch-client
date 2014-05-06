@@ -8,12 +8,12 @@ You can find the full documentation [here](http://rahatarmanahmed.github.io/node
 
 
 ## Installation
-node-irc-client is not yet available from npm, but it will be once things are finished and cleaned up!
+`npm install node-irc-client`
 
 ## Example usage
 There will be more extensive examples soon. For now, here is a simple IRC echo bot in CoffeeScript.
 
-	Client = require './src/client'
+	Client = require 'node-irc-client'
 
 	client = new Client
 		server: "irc.esper.net"
