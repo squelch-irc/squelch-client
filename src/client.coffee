@@ -28,6 +28,7 @@ defaultOpt =
 	ssl: false
 	selfSigned: false
 	certificateExpired: false
+	timeout: 120000
 
 ###
 @nodoc
@@ -86,6 +87,8 @@ Client extends EventEmitter2, so you can use the typical on or once functions wi
 	When the mode is set on a user. The mode parameter will only be a single mode. The setter can be a nick or the server.
  - **-usermode**: *(user, mode, setter)*</br>
 	When the mode is removed from a user. The mode parameter will only be a single mode. The setter can be a nick or the server.
+ - **timeout**: *(seconds)*</br>
+	When the client times out, this event will be triggered right before disconnecting.
 ###
 class Client extends EventEmitter2
 	###
@@ -110,6 +113,7 @@ class Client extends EventEmitter2
 	@option opt [Boolean/Object] ssl Whether to use ssl to connect to the server. If ssl is an object, then it is used as the options for ssl connections (See tls.connect in 'tls' node module). Default: false
 	@option opt [Boolean] selfSigned Whether to accept self signed ssl certificates or not. Default: false
 	@option opt [Boolean] certificateExpired Whether to accept expired certificates or not. Default: false
+	@option opt [Integer] timeout Number of milliseconds to wait before timing out. Default: 120000
 
 	###
 	constructor: (opt) ->
@@ -190,6 +194,16 @@ class Client extends EventEmitter2
 			@conn.on "data", (data) =>
 				for line in data.toString().split "\r\n"
 					@handleReply line
+				clearTimeout @_.timeout if @_.timeout
+				@_.timeout = setTimeout =>
+					@raw "PING :ruthere"
+					pingTime = new Date().getTime()
+					@_.timeout = setTimeout =>
+						seconds = #{(new Date().getTime() - pingTime) / 1000}
+						@emit 'timeout', seconds
+						@handleReply "ERROR :Ping Timeout(#{seconds} seconds)"
+					, @opt.timeout
+				, @opt.timeout
 			# @conn.on "close", =>
 			# 	@log "closing"
 			@conn.on "error", =>
