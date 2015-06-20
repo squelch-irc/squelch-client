@@ -1,7 +1,7 @@
 net = require "net"
 tls = require "tls"
 path = require "path"
-EventEmitter = require('events').EventEmitter
+EventEmitter2 = require('eventemitter2').EventEmitter2
 parseMessage = require "irc-message"
 
 Channel = require './channel'
@@ -44,7 +44,7 @@ getSender = (parsedReply) ->
 An IRC Client.
 @author Rahat Ahmed
 
-Client extends EventEmitter, so you can use the typical on or once functions with the following events.
+Client extends EventEmitter2, so you can use the typical on or once functions with the following events.
 ## Events
  - **connect**: *(nick)*</br>
 	When the client successfully connects to the server. (Note: This is not just when the connection is made, but after the 001 welcome reply is received.)
@@ -55,13 +55,13 @@ Client extends EventEmitter, so you can use the typical on or once functions wit
  - **nick**: *(old, new)*</br>
 	When someone changes their nick and is visible in a channel the client is in. Can be the client itself.
  - **join**: *(chan, nick)*</br>
-	When a user joins a channel the client is in. Can be the client itself.
- - **join#chan**: *(chan, nick)*</br>
-	When a user joins #chan. The client must be in #chan for this to work. Can be the client itself. If #chan has upper case letters like "#IRCHelp", it will trigger both join#IRCHelp and join#irchelp.
+	When a user joins any channel the client is in. Can be the client itself.
+ - **join::chan**: *(chan, nick)*</br>
+	When a user joins #chan. The client must be in #chan for this to work. Can be the client itself. If #chan has upper case letters like "#IRCHelp", it will trigger both join::#IRCHelp and join::#irchelp.
  - **part**: *(chan, nick, reason)*</br>
-	When a user parts a channel the client is in. Can be the client itself.
- - **part#chan**: *(chan, nick, reason)*</br>
-	When a user parts #chan. See the join#chan event above.
+	When a user parts any channel the client is in. Can be the client itself.
+ - **part::chan**: *(chan, nick, reason)*</br>
+	When a user parts #chan. See the join::chan event above.
  - **kick**: *(chan, nick, kicker, reason)*</br>
 	When a user is kicked from a channel the client is in. Reason is optional.
  - **raw**: *(parsedMsg)*</br>
@@ -87,7 +87,7 @@ Client extends EventEmitter, so you can use the typical on or once functions wit
  - **-usermode**: *(user, mode, setter)*</br>
 	When the mode is removed from a user. The mode parameter will only be a single mode. The setter can be a nick or the server.
 ###
-class Client extends EventEmitter
+class Client extends EventEmitter2
 	###
 	Constructor for Client.
 	@option opt [String] server The server address to connect to
@@ -113,6 +113,12 @@ class Client extends EventEmitter
 
 	###
 	constructor: (opt) ->
+		# Set EventEmitter2 options
+		super
+			wildcard: true
+			delimiter: '::'
+			newListener: false
+			maxListeners: 0
 		@_ =
 			numRetries: 0
 			connected: false
@@ -371,13 +377,13 @@ class Client extends EventEmitter
 			if cb instanceof Function
 				for c in chan
 					do (c) =>
-						@once "join#{c}", (channel, nick) ->
+						@once ["join", c], (channel, nick) ->
 							cb(channel, nick)
 
 		else
 			@raw "JOIN #{chan}"
 			if cb instanceof Function
-				@once "join#{chan}", (channel, nick) ->
+				@once ["join", chan], (channel, nick) ->
 					cb(channel, nick)
 
 	###
@@ -417,12 +423,12 @@ class Client extends EventEmitter
 			if cb instanceof Function
 				for c in chan
 					do (c) =>
-						@once "part#{c}", (channel, nick) ->
+						@once ["part", c], (channel, nick) ->
 							cb(channel, nick)
 		else
 			@raw "PART #{chan+reason}"
 			if cb instanceof Function
-				@once "part#{chan}", (channel, nick) ->
+				@once ["part", chan], (channel, nick) ->
 					cb(channel, nick)
 
 	###
@@ -649,10 +655,10 @@ class Client extends EventEmitter
 					else
 						@_.channels[chan.toLowerCase()]._.users[nick] = ""
 					@emit "join", chan, nick
-					@emit "join#{chan}", chan, nick
+					@emit ["join", chan], chan, nick
 					# Because no one likes case sensitivity
 					if chan.toLowerCase() isnt chan
-						@emit "join#{chan.toLowerCase()}", chan, nick
+						@emit ["join", chan.toLowerCase()], chan, nick
 				when "PART"
 					nick = getSender parsedReply
 					chan = parsedReply.params[0]
@@ -666,10 +672,10 @@ class Client extends EventEmitter
 							delete users[nick]
 							break
 					@emit "part", chan, nick, reason
-					@emit "part#{chan}", chan, nick, reason
+					@emit ["part", chan], chan, nick, reason
 					# Because no one likes case sensitivity
 					if chan.toLowerCase() isnt chan
-						@emit "part#{chan.toLowerCase()}", chan, nick
+						@emit ["part", chan.toLowerCase()], chan, nick
 				when "NICK"
 					oldnick = getSender parsedReply
 					newnick = parsedReply.params[0]

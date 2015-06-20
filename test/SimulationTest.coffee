@@ -182,15 +182,15 @@ describe 'handleReply simulations', ->
 			client.handleReply ":HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy"
 			client.getChannel("#sexy").users().indexOf("HotGurl").should.not.equal -1
 
-		it 'should emit a join#chan event', (done) ->
-			client.once 'join#sexy', async(done) (chan, nick) ->
+		it 'should emit a join::chan event', (done) ->
+			client.once 'join::#sexy', async(done) (chan, nick) ->
 				chan.should.equal "#sexy"
 				nick.should.equal "HotGurl"
 				done()
 			client.handleReply ":HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy"
 
-		it 'should emit a join#chan event in lowercase', (done) ->
-			client.once 'join#testchan', async(done) (chan, nick) ->
+		it 'should emit a join::chan event in lowercase', (done) ->
+			client.once 'join::#testchan', async(done) (chan, nick) ->
 				chan.should.equal "#testChan"
 				nick.should.equal "PakaluPapito"
 				done()
@@ -214,15 +214,15 @@ describe 'handleReply simulations', ->
 				done()
 			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com PART #sexy"
 
-		it 'should emit a part#chan event', (done) ->
-			client.once 'part#sexy', async(done) (chan, nick) ->
+		it 'should emit a part::chan event', (done) ->
+			client.once 'part::#sexy', async(done) (chan, nick) ->
 				chan.should.equal "#sexy"
 				nick.should.equal "KR"
 				done()
 			client.handleReply ":KR!~RayK@cpe-76-183-227-155.tx.res.rr.com PART #sexy"
 
-		it 'should emit a part#chan event in lowercase', (done) ->
-			client.once 'part#furry', async(done) (chan, nick) ->
+		it 'should emit a part::chan event in lowercase', (done) ->
+			client.once 'part::#furry', async(done) (chan, nick) ->
 				chan.should.equal "#Furry"
 				nick.should.equal "PakaluPapito"
 				done()
