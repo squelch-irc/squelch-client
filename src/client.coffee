@@ -189,7 +189,7 @@ class Client extends EventEmitter
 				console.error "Disconnected by network error."
 				if @opt.autoReconnect and @opt.autoReconnectTries > 0
 					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
-					setTimeout => 
+					setTimeout =>
 						@connect @opt.autoReconnectTries
 					, @opt.reconnectDelay
 			@raw "PASS #{@opt.password}", false if @opt.password?
@@ -771,7 +771,7 @@ class Client extends EventEmitter
 					@log "Disconnected from server"
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
 						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
-						setTimeout => 
+						setTimeout =>
 							@connect @opt.autoReconnectTries
 						, @opt.reconnectDelay
 				when "001" # RPL_WELCOME
