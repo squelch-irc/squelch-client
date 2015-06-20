@@ -5,6 +5,7 @@ EventEmitter = require('events').EventEmitter
 parseMessage = require "irc-message"
 
 Channel = require './channel'
+{getReplyCode, getReplyName} = require './replies'
 
 defaultOpt =
 	port: 6667
@@ -774,19 +775,19 @@ class Client extends EventEmitter
 						setTimeout =>
 							@connect @opt.autoReconnectTries
 						, @opt.reconnectDelay
-				when "001" # RPL_WELCOME
+				when getReplyCode("RPL_WELCOME") # RPL_WELCOME
 					@_.connected = true
 					@_.nick = parsedReply.params[0]
 					@emit "connect", @_.nick
 					@join @opt.channels
 
-				when "002" # RPL_YOURHOST
+				when getReplyCode("RPL_YOURHOST")
 					@_.greeting.yourHost = parsedReply.params[1]
-				when "003" # RPL_CREATED
+				when getReplyCode("RPL_CREATED")
 					@_.greeting.created = parsedReply.params[1]
-				when "004" # RPL_MYINFO
+				when getReplyCode("RPL_MYINFO")
 					@_.greeting.myInfo = parsedReply.params[1..].join " "
-				when "005" # RPL_ISUPPORT because we can
+				when getReplyCode("RPL_ISUPPORT")
 					for item in parsedReply.params[1..]
 						continue if item.indexOf(" ") isnt -1
 						split = item.split "="
@@ -807,15 +808,15 @@ class Client extends EventEmitter
 								# chanmodes[2] requires param on set
 								# chanmodes[3] never require param
 								
-				when "331" #RPL_NOTOPIC
+				when getReplyCode("RPL_NOTOPIC")
 					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ""
-				when "332" #RPL_TOPIC
+				when getReplyCode("RPL_TOPIC")
 					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = parsedReply.params[2]
-				when "333" #RPL_TOPICWHOTIME
+				when getReplyCode("RPL_TOPIC_WHO_TIME")
 					chan = @_.channels[parsedReply.params[1].toLowerCase()]
 					chan._.topicSetter = parsedReply.params[2]
 					chan._.topicTime = new Date parseInt(parsedReply.params[3])
-				when "353" #RPL_NAMREPLY
+				when getReplyCode("RPL_NAMREPLY")
 					chan = @_.channels[parsedReply.params[2].toLowerCase()]
 					names = parsedReply.params[3].split " "
 					for name in names
@@ -823,14 +824,14 @@ class Client extends EventEmitter
 							chan._.users[name[1..]] = name[0]
 						else
 							chan._.users[name] = ""
-				when "372" #RPL_MOTD
+				when getReplyCode("RPL_MOTD")
 					@_.MOTD += parsedReply.params[1] + "\r\n"
-				when "375" # RPL_MOTDSTART
+				when getReplyCode("RPL_MOTDSTART")
 					@_.MOTD = parsedReply.params[1] + "\r\n"
-				when "376" # RPL_ENDOFMOTD
+				when getReplyCode("RPL_ENDOFMOTD")
 					@emit "motd", @_.MOTD
 
-				when "433" # ERR_NICKNAMEINUSE
+				when getReplyCode("ERR_NICKNAMEINUSE")
 					if @opt.autoNickChange
 						@_.numRetries++
 						@nick @opt.nick + @_.numRetries
