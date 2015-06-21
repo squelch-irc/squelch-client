@@ -20,7 +20,7 @@ defaultOpt =
 	autoNickChange: true
 	autoRejoin: false
 	autoConnect: true
-	autoSplitMessage: true # TODO: write test for this
+	autoSplitMessage: true
 	messageDelay: 1000
 	stripColors: true # TODO: write test for this
 	stripStyles: true # TODO: write test for this
@@ -326,15 +326,16 @@ class Client extends EventEmitter2
 	Splits message into array of safely sized chunks
 	Include the target in the command
 	###
-	splitText: (command, msg) ->
+	splitText: (command, msg, extra = 0) ->
 		limit = 512 -
 			3 - 					# :!@
 			@_.nick.length - 		# nick of hostmask
 			9 - 					# max username
 			65 - 					# max hostname
-			command.length - 	# command
+			command.length - 		# command
 			2 - 					# ' :' before msg
-			2 						# /r/n
+			2 -						# /r/n
+			extra					# any extra space requested
 		return (msg.slice(i, i+limit) for i in [0..msg.length] by limit)
 			
 	###
@@ -355,7 +356,7 @@ class Client extends EventEmitter2
 	###
 	action: (target, msg) ->
 		if @opt.autoSplitMessage
-			@msg target, "\x01ACTION #{line}\x01" for line in @splitText '\x01ACTION\x01', msg
+			@msg target, "\x01ACTION #{line}\x01" for line in @splitText 'PRIVMSG #{target}', msg, 9
 		else
 			@msg target, "\x01ACTION #{msg}\x01"
 
