@@ -18,7 +18,7 @@ defaultOpt =
 	verbose: false
 	channels: []
 	autoNickChange: true
-	autoRejoin: false # TODO: write test for this
+	autoRejoin: false
 	autoConnect: true
 	autoSplitMessage: true # TODO: write test for this
 	messageDelay: 1000
@@ -517,13 +517,15 @@ class Client extends EventEmitter2
 	  @param reason [String] The reason to give when kicking
 	###
 	kick: (chan, user, reason) ->
-		chan = chan.join() if chan instanceof Array
-		user = user.join() if user instanceof Array
+		chans = [].concat chan
+		users = [].concat user
 		if reason?
 			reason = ' :' + reason
 		else
 			reason = ''
-		@raw "KICK #{chan} #{user}#{reason}"
+		for c in chans
+			for u in users
+				@raw "KICK #{c} #{u}#{reason}"
 
 	###
 	Sets mode +b on a hostmask in a channel.

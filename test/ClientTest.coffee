@@ -180,7 +180,14 @@ describe 'Client', ->
 			.catch done
 		it 'with multiple chans and nicks', (done) ->
 			client.kick ['#persia', '#empire'], ['messenger1', 'messenger2', 'messenger3']
-			server.expect 'KICK #persia,#empire messenger1,messenger2,messenger3'
+			server.expect [
+				'KICK #persia messenger1'
+				'KICK #persia messenger2'
+				'KICK #persia messenger3'
+				'KICK #empire messenger1'
+				'KICK #empire messenger2'
+				'KICK #empire messenger3'
+			]
 			.then done
 			.catch done
 		it 'with a reason', (done) ->
