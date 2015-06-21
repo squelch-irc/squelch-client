@@ -5,6 +5,7 @@ EventEmitter2 = require('eventemitter2').EventEmitter2
 ircMsg = require 'irc-message'
 Promise = require 'bluebird'
 streamMap = require 'through2-map'
+color = require 'irc-colors'
 cbNoop = (err) -> throw err if err
 
 Channel = require './channel'
@@ -199,9 +200,9 @@ class Client extends EventEmitter2
 				@log 'Connected'
 				stream = @conn
 				if @opt.stripColors
-					stream = stream.pipe streamMap wantStrings: true, @stripColors
+					stream = stream.pipe streamMap wantStrings: true, color.stripColors
 				if @opt.stripStyles
-					stream = stream.pipe streamMap wantStrings: true, @stripStyles
+					stream = stream.pipe streamMap wantStrings: true, color.stripStyle
 				stream = stream.pipe ircMsg.createStream parsePrefix: true
 				stream.on 'data', (data) =>
 					clearTimeout @_.timeout if @_.timeout
@@ -679,31 +680,6 @@ class Client extends EventEmitter2
 	###
 	isChannel: (chan) ->
 		return @_.iSupport['CHANTYPES'].indexOf(chan[0]) isnt -1
-
-	###
-	Strips all colors from a string.
-	@param str [String] The string to strip.
-	@return [String] str with all colors stripped.
-	###
-	stripColors: (str) ->
-		return str.replace /(\x03\d{0,2}(,\d{0,2})?)/g, ''
-
-	###
-	Strips all styles from a string. This includes bold, underline, italics,
-	and normal.
-	@param str [String] The string to strip.
-	@return [String] str with all styles stripped.
-	###
-	stripStyles: (str) ->
-		return str.replace /[\x0F\x02\x16\x1F]/g, ''
-
-	###
-	Strips all colors and styles from a string.
-	@param str [String] The string to strip.
-	@return [String] str with all colors and styles stripped.
-	###
-	stripColorsAndStyles: (str) ->
-		return stripColors stripStyles str
 
 	###
 	@nodoc

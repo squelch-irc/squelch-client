@@ -361,6 +361,21 @@ describe 'handleReply simulations', ->
 				msg.should.equal 'Choke on it.'
 				done()
 			server.reply ':Chase!kalt@millennium.stealth.net PRIVMSG #sexy :Choke on it.'
+		it 'should strip colors', (done) ->
+			client.once 'msg', async(done) (from, to, msg) ->
+				from.should.equal 'Chase'
+				to.should.equal '#sexy'
+				msg.should.equal 'Choke on it.'
+				done()
+			server.reply ':Chase!kalt@millennium.stealth.net PRIVMSG #sexy :\x0304Choke on it.\x03'
+		it 'should strip styles', (done) ->
+			client.once 'msg', async(done) (from, to, msg) ->
+				from.should.equal 'Chase'
+				to.should.equal '#sexy'
+				msg.should.equal 'Choke on it.'
+				done()
+			server.reply ':Chase!kalt@millennium.stealth.net PRIVMSG #sexy :\x02Choke on it.\x02'
+
 
 	describe 'action', ->
 		it 'should emit an action event', (done) ->

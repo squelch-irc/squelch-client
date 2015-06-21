@@ -12,6 +12,7 @@
     "bluebird": "^2.9.30",
     "eventemitter2": "^0.4.14",
     "grunt-gh-pages": "^0.10.0",
+    "irc-colors": "^1.2.0",
     "irc-message": "~3.0.0",
     "irc-replies": "^2.0.1",
     "through2-map": "^2.0.0"
