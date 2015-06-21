@@ -11,8 +11,8 @@ class Channel
 		@_ =
 			client: client
 			name: name
-			topic: ""
-			topicSetter: ""
+			topic: ''
+			topicSetter: ''
 			topicTime: null
 			users: {}
 			mode: []
@@ -98,7 +98,7 @@ class Channel
 	@see Client#mode
 	###
 	mode: (modeStr) ->
-		return @mode.join("") if not modeStr?
+		return @mode.join('') if not modeStr?
 		@_.client.mode modeStr
 
 	###
@@ -148,20 +148,20 @@ class Channel
 	@return [Array] Array of all nicks of ops in this channel.
 	###
 	ops: ->
-		return (nick for nick, status of @_.users when status is "@")
+		return (nick for nick, status of @_.users when status is '@')
 
 	###
 	Returns a list of all users in this channel that are voices.
 	@return [Array] Array of all nicks of voices in this channel.
 	###
 	voices: ->
-		return (nick for nick, status of @_.users when status is "+")
+		return (nick for nick, status of @_.users when status is '+')
 
 	###
 	Returns a list of all users in this channel that have no special status.
 	@return [Array] Array of all nicks of users with no special status in this channel.
 	###
 	normalUsers: ->
-		return (nick for nick, status of @_.users when status is "")
+		return (nick for nick, status of @_.users when status is '')
 
 module.exports = Channel

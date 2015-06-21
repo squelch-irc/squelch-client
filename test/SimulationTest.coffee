@@ -24,7 +24,7 @@ cleanUp = (client, server) ->
 	server.close()
 
 multiDone = (num, done) ->
-	return (args...)->
+	return (args...) ->
 		done args... if --num is 0
 
 describe 'handleReply simulations', ->
@@ -186,11 +186,13 @@ describe 'handleReply simulations', ->
 		it 'should save the motd properly and emit a motd event', (done) ->
 			# Thank you Brian Lee https://twitter.com/LRcomic/status/434440616051634176
 			client.once 'motd', async(done) (motd) ->
-				motd.should.equal "irc.ircnet.net Message of the Day\r\n\
+				motd.should.equal """
+					irc.ircnet.net Message of the Day\r\n\
 					THE ROSES ARE RED\r\n\
 					THE VIOLETS ARE BLUE\r\n\
 					IGNORE THIS LINE\r\n\
-					THIS IS A HAIKU\r\n"
+					THIS IS A HAIKU\r\n
+				"""
 				done()
 
 			server.reply [

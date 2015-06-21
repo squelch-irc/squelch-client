@@ -1,8 +1,8 @@
-net = require "net"
-tls = require "tls"
-path = require "path"
+net = require 'net'
+tls = require 'tls'
+path = require 'path'
 EventEmitter2 = require('eventemitter2').EventEmitter2
-parseMessage = require "irc-message"
+parseMessage = require 'irc-message'
 
 Channel = require './channel'
 {getReplyCode, getReplyName} = require './replies'
@@ -57,7 +57,7 @@ Client extends EventEmitter2, so you can use the typical on or once functions wi
  - **join**: *(chan, nick)*</br>
 	When a user joins any channel the client is in. Can be the client itself.
  - **join::chan**: *(chan, nick)*</br>
-	When a user joins #chan. The client must be in #chan for this to work. Can be the client itself. If #chan has upper case letters like "#IRCHelp", it will trigger both join::#IRCHelp and join::#irchelp.
+	When a user joins #chan. The client must be in #chan for this to work. Can be the client itself. If #chan has upper case letters like '#IRCHelp', it will trigger both join::#IRCHelp and join::#irchelp.
  - **part**: *(chan, nick, reason)*</br>
 	When a user parts any channel the client is in. Can be the client itself.
  - **part::chan**: *(chan, nick, reason)*</br>
@@ -132,18 +132,18 @@ class Client extends EventEmitter2
 			greeting: {}
 			# default values in case there's no iSupport
 			prefix:
-				o: "@"
-				v: "+"
-			chanmodes: ["beI", "k", "l", "aimnpqsrt"]
+				o: '@'
+				v: '+'
+			chanmodes: ['beI', 'k', 'l', 'aimnpqsrt']
 		if not opt?
-			throw new Error "No options argument given."
-		if typeof opt is "string"
+			throw new Error 'No options argument given.'
+		if typeof opt is 'string'
 			opt = require path.resolve opt
 		@opt = {}
 		@opt[key] = value for key, value of defaultOpt
 		@opt[key] = value for key, value of opt
 		if not @opt.server?
-			throw new Error "No server specified."
+			throw new Error 'No server specified.'
 		if @opt.autoConnect
 			@connect()
 
@@ -162,21 +162,21 @@ class Client extends EventEmitter2
 	  @param tries [Integer] Number of times to retry connecting. If -1, the client will try to connect infinitely many times.
 	@overload #connect(cb)
 	  Connects to the server.
-	  @param cb [Function] Optional callback to be called on "connect" event.
+	  @param cb [Function] Optional callback to be called on 'connect' event.
 	@overload #connect(tries, cb)
 	  Connects to the server.
 	  @param tries [Integer] Number of times to retry connecting. If -1, the client will try to connect infinitely many times.
-	  @param cb [Function] Optional callback to be called on "connect" event.
+	  @param cb [Function] Optional callback to be called on 'connect' event.
 	###
 	connect: (tries = 1, cb) ->
-		@log "Connecting..."
+		@log 'Connecting...'
 		if tries instanceof Function
 			cb = tries
 			tries = 1
 		tries--
 
 		errorListener = (err) =>
-			console.error "Unable to connect."
+			console.error 'Unable to connect.'
 			console.error err
 			if tries > 0 or tries is -1
 				console.error "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
@@ -187,14 +187,14 @@ class Client extends EventEmitter2
 			@conn.setEncoding 'utf8'
 			@conn.removeListener 'error', errorListener
 			if cb instanceof Function
-				@once "connect", (nick) ->
+				@once 'connect', (nick) ->
 					cb(nick)
-			@log "Connected"
-			@conn.on "data", (data) =>
+			@log 'Connected'
+			@conn.on 'data', (data) =>
 				
 				clearTimeout @_.timeout if @_.timeout
 				@_.timeout = setTimeout =>
-					@raw "PING :ruthere"
+					@raw 'PING :ruthere'
 					pingTime = new Date().getTime()
 					@_.timeout = setTimeout =>
 						seconds = (new Date().getTime() - pingTime) / 1000
@@ -202,12 +202,12 @@ class Client extends EventEmitter2
 						@handleReply "ERROR :Ping Timeout(#{seconds} seconds)"
 					, @opt.timeout
 				, @opt.timeout
-				for line in data.toString().split "\r\n"
+				for line in data.toString().split '\r\n'
 					@handleReply line
-			# @conn.on "close", =>
-			# 	@log "closing"
-			@conn.on "error", =>
-				console.error "Disconnected by network error."
+			# @conn.on 'close', =>
+			# 	@log 'closing'
+			@conn.on 'error', =>
+				console.error 'Disconnected by network error.'
 				if @opt.autoReconnect and @opt.autoReconnectTries > 0
 					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
 					setTimeout =>
@@ -224,9 +224,9 @@ class Client extends EventEmitter2
 					if @opt.selfSigned and (@conn.authorizationError is 'DEPTH_ZERO_SELF_SIGNED_CERT' or
 										@conn.authorizationError is 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' or
 										@conn.authorizationError is 'SELF_SIGNED_CERT_IN_CHAIN')
-						@log "Connecting to server with self signed certificate"
+						@log 'Connecting to server with self signed certificate'
 					else if @opt.certificateExpired and @conn.authorizationError is 'CERT_HAS_EXPIRED'
-						@log "Connecting to server with expired certificate"
+						@log 'Connecting to server with expired certificate'
 					else
 						@log "Authorization error: #{@conn.authorizationError}"
 						return
@@ -257,9 +257,9 @@ class Client extends EventEmitter2
 		if reason?
 			@raw "QUIT :#{reason}", false
 		else
-			@raw "QUIT", false
+			@raw 'QUIT', false
 		if cb instanceof Function
-			@once "disconnect", ->
+			@once 'disconnect', ->
 				cb()
 
 	###
@@ -271,12 +271,12 @@ class Client extends EventEmitter2
 	###
 	forceQuit: (reason) ->
 		# TODO: write test for this
-		@raw "QUIT" + (if reason? then " :#{reason}" else ""), false
+		@raw 'QUIT' + (if reason? then " :#{reason}" else ''), false
 		@_.disconnecting = true
-		@handleReply "ERROR :Force Quit"
+		@handleReply 'ERROR :Force Quit'
 
 	###
-	Sends a raw message to the server. Automatically appends "\r\n".
+	Sends a raw message to the server. Automatically appends '\r\n'.
 	@param msg [String] The raw message to send.
 	@param delay [Boolean] If false, the message skips the message queue and is sent right away. Defaults to true.
 	###
@@ -287,7 +287,7 @@ class Client extends EventEmitter2
 			return
 		if not delay or @opt.messageDelay is 0
 			@log "-> #{msg}"
-			@conn.write msg + "\r\n"
+			@conn.write msg + '\r\n'
 		else
 			setTimeout @dequeue, 0 if @_.messageQueue.length is 0
 			@_.messageQueue.push msg
@@ -300,7 +300,7 @@ class Client extends EventEmitter2
 		msg = @_.messageQueue.shift()
 		if @conn?
 			@log "-> #{msg}"
-			@conn.write msg + "\r\n"
+			@conn.write msg + '\r\n'
 		@_.messageQueueTimeout = setTimeout @dequeue, @opt.messageDelay if @_.messageQueue.length isnt 0
 
 	###
@@ -315,7 +315,7 @@ class Client extends EventEmitter2
 			9 - 					# max username
 			65 - 					# max hostname
 			command.length - 	# command
-			2 - 					# " :" before msg
+			2 - 					# ' :' before msg
 			2 						# /r/n
 		return (msg.slice(i, i+limit) for i in [0..msg.length] by limit)
 			
@@ -337,7 +337,7 @@ class Client extends EventEmitter2
 	###
 	action: (target, msg) ->
 		if @opt.autoSplitMessage
-			@msg target, "\x01ACTION #{line}\x01" for line in @splitText "\x01ACTION\x01", msg
+			@msg target, "\x01ACTION #{line}\x01" for line in @splitText '\x01ACTION\x01', msg
 		else
 			@msg target, "\x01ACTION #{msg}\x01"
 
@@ -409,13 +409,13 @@ class Client extends EventEmitter2
 			if cb instanceof Function
 				for c in chan
 					do (c) =>
-						@once ["join", c], (channel, nick) ->
+						@once ['join', c], (channel, nick) ->
 							cb(channel, nick)
 
 		else
 			@raw "JOIN #{chan}"
 			if cb instanceof Function
-				@once ["join", chan], (channel, nick) ->
+				@once ['join', chan], (channel, nick) ->
 					cb(channel, nick)
 
 	###
@@ -445,23 +445,23 @@ class Client extends EventEmitter2
 	###
 	part: (chan, reason, cb) ->
 		if not reason?
-			reason = ""
+			reason = ''
 		else if reason instanceof Function
 			cb = reason
-			reason = ""
+			reason = ''
 		else
-			reason = " :" + reason
+			reason = ' :' + reason
 		if chan instanceof Array and chan.length > 0
 			@raw "PART #{chan.join()+reason}"
 			if cb instanceof Function
 				for c in chan
 					do (c) =>
-						@once ["part", c], (channel, nick) ->
+						@once ['part', c], (channel, nick) ->
 							cb(channel, nick)
 		else
 			@raw "PART #{chan+reason}"
 			if cb instanceof Function
-				@once ["part", chan], (channel, nick) ->
+				@once ['part', chan], (channel, nick) ->
 					cb(channel, nick)
 
 	###
@@ -490,9 +490,9 @@ class Client extends EventEmitter2
 		chan = chan.join() if chan instanceof Array
 		user = user.join() if user instanceof Array
 		if reason?
-			reason = " :" + reason
+			reason = ' :' + reason
 		else
-			reason = ""
+			reason = ''
 		@raw "KICK #{chan} #{user}#{reason}"
 
 	###
@@ -566,10 +566,10 @@ class Client extends EventEmitter2
 
 	###
 	@overload #verbose()
-	  Getter for "verbose" in options.
+	  Getter for 'verbose' in options.
 	  @return [Boolean] the value of verbose
 	@overload #verbose(enabled)
-	  Setter for "verbose"
+	  Setter for 'verbose'
 	  @param enabled [Boolean] The value of verbose to set
 	###
 	verbose: (enabled) ->
@@ -578,10 +578,10 @@ class Client extends EventEmitter2
 
 	###
 	@overload #messageDelay()
-	  Getter for "messageDelay" in options.
+	  Getter for 'messageDelay' in options.
 	  @return [Boolean] the value of messageDelay
 	@overload #messageDelay(value)
-	  Setter for "messageDelay"
+	  Setter for 'messageDelay'
 	  @param value [Boolean] The value of messageDelay to set
 	###
 	messageDelay: (value) ->
@@ -590,10 +590,10 @@ class Client extends EventEmitter2
 
 	###
 	@overload #autoSplitMessage()
-	  Getter for "autoSplitMessage" in options.
+	  Getter for 'autoSplitMessage' in options.
 	  @return [Boolean] the value of autoSplitMessage
 	@overload #autoSplitMessage(enabled)
-	  Setter for "autoSplitMessage"
+	  Setter for 'autoSplitMessage'
 	  @param enabled [Boolean] The value of autoSplitMessage to set
 	###
 	autoSplitMessage: (enabled) ->
@@ -602,10 +602,10 @@ class Client extends EventEmitter2
 
 	###
 	@overload #autoRejoin()
-	  Getter for "autoRejoin" in options.
+	  Getter for 'autoRejoin' in options.
 	  @return [Boolean] the value of autoRejoin
 	@overload #autoRejoin(enabled)
-	  Setter for "autoRejoin"
+	  Setter for 'autoRejoin'
 	  @param enabled [Boolean] The value of autoRejoin to set
 	###
 	autoRejoin: (enabled) ->
@@ -640,12 +640,12 @@ class Client extends EventEmitter2
 	###
 	Checks if a string represents a channel, based on the CHANTYPES value
 	from the server's iSupport 005 response. Typically this means it checks
-	if the string starts with a "#".
+	if the string starts with a '#'.
 	@param chan [String] The string to check
 	@return [Boolean] true if chan starts with a valid channel prefix (ex: #), false otherwise
 	###
 	isChannel: (chan) ->
-		return @_.iSupport["CHANTYPES"].indexOf(chan[0]) isnt -1
+		return @_.iSupport['CHANTYPES'].indexOf(chan[0]) isnt -1
 
 	###
 	Strips all colors from a string.
@@ -684,19 +684,19 @@ class Client extends EventEmitter2
 		parsedReply = parseMessage reply
 		if parsedReply?
 			switch parsedReply.command
-				when "JOIN"
+				when 'JOIN'
 					nick = getSender parsedReply
 					chan = parsedReply.params[0]
 					if nick is @nick()
 						@_.channels[chan.toLowerCase()] = new Channel @, chan
 					else
-						@_.channels[chan.toLowerCase()]._.users[nick] = ""
-					@emit "join", chan, nick
-					@emit ["join", chan], chan, nick
+						@_.channels[chan.toLowerCase()]._.users[nick] = ''
+					@emit 'join', chan, nick
+					@emit ['join', chan], chan, nick
 					# Because no one likes case sensitivity
 					if chan.toLowerCase() isnt chan
-						@emit ["join", chan.toLowerCase()], chan, nick
-				when "PART"
+						@emit ['join', chan.toLowerCase()], chan, nick
+				when 'PART'
 					nick = getSender parsedReply
 					chan = parsedReply.params[0]
 					reason = parsedReply.params[1]
@@ -708,37 +708,37 @@ class Client extends EventEmitter2
 						for user of users when user is nick
 							delete users[nick]
 							break
-					@emit "part", chan, nick, reason
-					@emit ["part", chan], chan, nick, reason
+					@emit 'part', chan, nick, reason
+					@emit ['part', chan], chan, nick, reason
 					# Because no one likes case sensitivity
 					if chan.toLowerCase() isnt chan
-						@emit ["part", chan.toLowerCase()], chan, nick
-				when "NICK"
+						@emit ['part', chan.toLowerCase()], chan, nick
+				when 'NICK'
 					oldnick = getSender parsedReply
 					newnick = parsedReply.params[0]
 					if oldnick is @nick()
 						@_.nick = newnick
-					@emit "nick", oldnick, newnick
+					@emit 'nick', oldnick, newnick
 					# TODO: update channel user info?
-				when "PRIVMSG"
+				when 'PRIVMSG'
 					from = getSender parsedReply
 					to = parsedReply.params[0]
 					msg = parsedReply.params[1]
-					if msg.lastIndexOf("\u0001ACTION", 0) is 0 # startsWith
-						@emit "action", from, to, msg.substring(8, msg.length-1)
+					if msg.lastIndexOf('\u0001ACTION', 0) is 0 # startsWith
+						@emit 'action', from, to, msg.substring(8, msg.length-1)
 					else
-						@emit "msg", from, to, msg
-				when "NOTICE"
+						@emit 'msg', from, to, msg
+				when 'NOTICE'
 					from = getSender parsedReply
 					to = parsedReply.params[0]
 					msg = parsedReply.params[1]
-					@emit "notice", from, to, msg
-				when "INVITE"
+					@emit 'notice', from, to, msg
+				when 'INVITE'
 					from = getSender parsedReply
 					# don't need to because you don't get invites for other ppl
 					chan = parsedReply.params[1]
-					@emit "invite", from, chan
-				when "KICK"
+					@emit 'invite', from, chan
+				when 'KICK'
 					kicker = getSender parsedReply
 					chan = parsedReply.params[0]
 					nick = parsedReply.params[1]
@@ -751,8 +751,8 @@ class Client extends EventEmitter2
 						for user of users when user is nick
 							delete users[nick]
 							break
-					@emit "kick", chan, nick, kicker, reason
-				when "MODE"
+					@emit 'kick', chan, nick, kicker, reason
+				when 'MODE'
 					sender = getSender parsedReply
 					chan = parsedReply.params[0]
 					user = chan if not @isChannel(chan)
@@ -760,10 +760,10 @@ class Client extends EventEmitter2
 					params = parsedReply.params[2..] if parsedReply.params.length > 2
 					adding = true
 					for c in modes
-						if c is "+"
+						if c is '+'
 							adding = true
 							continue
-						if c is "-"
+						if c is '-'
 							adding = false
 							continue
 						if not user? # We're dealin with a real deal channel mode
@@ -775,7 +775,7 @@ class Client extends EventEmitter2
 							@_.prefix[c]?
 								param = params.shift()
 							if @_.prefix[c]? # Update user's mode in channel
-								@getChannel(chan)._.users[param] = if adding then @_.prefix[c] else ""
+								@getChannel(chan)._.users[param] = if adding then @_.prefix[c] else ''
 							else # Update channel mode
 								channelModes = @getChannel(chan)._.mode
 								if adding
@@ -783,16 +783,16 @@ class Client extends EventEmitter2
 								if not adding
 									index = channelModes.indexOf c
 									channelModes[index..index] = [] if index isnt -1
-							@emit "+mode", chan, sender, c, param if adding
-							@emit "-mode", chan, sender, c, param if not adding
+							@emit '+mode', chan, sender, c, param if adding
+							@emit '-mode', chan, sender, c, param if not adding
 						else # We're dealing with some stupid user mode
 							# Ain't no one got time to keep track of user modes
-							@emit "+usermode", user, c, sender if adding
-							@emit "-usermode", user, c, sender if not adding
+							@emit '+usermode', user, c, sender if adding
+							@emit '-usermode', user, c, sender if not adding
 
 
-					# @emit "mode", chan, sender, mode
-				when "QUIT"
+					# @emit 'mode', chan, sender, mode
+				when 'QUIT'
 					nick = getSender parsedReply
 					reason = parsedReply.params[0]
 					if nick is @nick() # Dunno if this ever happens.
@@ -802,10 +802,10 @@ class Client extends EventEmitter2
 							for user of chan._.users when user is nick
 								delete chan._.users[nick]
 								break
-					@emit "quit", nick, reason
-				when "PING"
+					@emit 'quit', nick, reason
+				when 'PING'
 					@raw "PONG :#{parsedReply.params[0]}", false
-				when "ERROR"
+				when 'ERROR'
 					@conn.destroy()
 					@_.channels = {}
 					@_.messageQueue = []
@@ -813,78 +813,78 @@ class Client extends EventEmitter2
 					clearTimeout @_.timeout
 					@conn = null
 					@_.connected = false
-					@emit "error", parsedReply.params[0] if not @_.disconnecting
+					@emit 'error', parsedReply.params[0] if not @_.disconnecting
 					@_.disconnecting = false
-					@emit "disconnect"
-					@log "Disconnected from server"
+					@emit 'disconnect'
+					@log 'Disconnected from server'
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
 						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
 						setTimeout =>
 							@connect @opt.autoReconnectTries
 						, @opt.reconnectDelay
-				when getReplyCode("RPL_WELCOME")
+				when getReplyCode('RPL_WELCOME')
 					@_.connected = true
 					@_.nick = parsedReply.params[0]
-					@emit "connect", @_.nick
+					@emit 'connect', @_.nick
 					@join @opt.channels
 
-				when getReplyCode("RPL_YOURHOST")
+				when getReplyCode('RPL_YOURHOST')
 					@_.greeting.yourHost = parsedReply.params[1]
-				when getReplyCode("RPL_CREATED")
+				when getReplyCode('RPL_CREATED')
 					@_.greeting.created = parsedReply.params[1]
-				when getReplyCode("RPL_MYINFO")
-					@_.greeting.myInfo = parsedReply.params[1..].join " "
-				when getReplyCode("RPL_ISUPPORT")
+				when getReplyCode('RPL_MYINFO')
+					@_.greeting.myInfo = parsedReply.params[1..].join ' '
+				when getReplyCode('RPL_ISUPPORT')
 					for item in parsedReply.params[1..]
-						continue if item.indexOf(" ") isnt -1
-						split = item.split "="
+						continue if item.indexOf(' ') isnt -1
+						split = item.split '='
 						if split.length is 1
 							@_.iSupport[item] = true
 						else
 							@_.iSupport[split[0]] = split[1]
 						switch split[0]
-							when "PREFIX"
+							when 'PREFIX'
 								match = /\((.+)\)(.+)/.exec(split[1])
 								@_.prefix = {}
 								@_.prefix[match[1][i]] = match[2][i] for i in [0...match[1].length]
 								@_.reversePrefix = {}
 								@_.reversePrefix[match[2][i]] = match[1][i] for i in [0...match[1].length]
-							when "CHANMODES"
-								@_.chanmodes = split[1].split ","
+							when 'CHANMODES'
+								@_.chanmodes = split[1].split ','
 								# chanmodes[0,1] always require param
 								# chanmodes[2] requires param on set
 								# chanmodes[3] never require param
 								
-				when getReplyCode("RPL_NOTOPIC")
-					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ""
-				when getReplyCode("RPL_TOPIC") # TODO: write test for this
+				when getReplyCode('RPL_NOTOPIC')
+					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ''
+				when getReplyCode('RPL_TOPIC') # TODO: write test for this
 					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = parsedReply.params[2]
-				when getReplyCode("RPL_TOPIC_WHO_TIME")
+				when getReplyCode('RPL_TOPIC_WHO_TIME')
 					chan = @_.channels[parsedReply.params[1].toLowerCase()]
 					chan._.topicSetter = parsedReply.params[2]
 					chan._.topicTime = new Date parseInt(parsedReply.params[3])
-				when getReplyCode("RPL_NAMREPLY") # TODO: write test for this
+				when getReplyCode('RPL_NAMREPLY') # TODO: write test for this
 					# TODO: trigger event on name update
 					chan = @_.channels[parsedReply.params[2].toLowerCase()]
-					names = parsedReply.params[3].split " "
+					names = parsedReply.params[3].split ' '
 					for name in names
 						if @_.reversePrefix[name[0]]?
 							chan._.users[name[1..]] = name[0]
 						else
-							chan._.users[name] = ""
-				when getReplyCode("RPL_MOTD")
-					@_.MOTD += parsedReply.params[1] + "\r\n"
-				when getReplyCode("RPL_MOTDSTART")
-					@_.MOTD = parsedReply.params[1] + "\r\n"
-				when getReplyCode("RPL_ENDOFMOTD")
-					@emit "motd", @_.MOTD
+							chan._.users[name] = ''
+				when getReplyCode('RPL_MOTD')
+					@_.MOTD += parsedReply.params[1] + '\r\n'
+				when getReplyCode('RPL_MOTDSTART')
+					@_.MOTD = parsedReply.params[1] + '\r\n'
+				when getReplyCode('RPL_ENDOFMOTD')
+					@emit 'motd', @_.MOTD
 
-				when getReplyCode("ERR_NICKNAMEINUSE")
+				when getReplyCode('ERR_NICKNAMEINUSE')
 					if @opt.autoNickChange
 						@_.numRetries++
 						@nick @opt.nick + @_.numRetries
 					else
 						@disconnect()
-		@emit "raw", parsedReply
+		@emit 'raw', parsedReply
 
 module.exports = Client

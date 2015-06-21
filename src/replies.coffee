@@ -1,4 +1,4 @@
-codeToName = require "irc-replies"
+codeToName = require 'irc-replies'
 nameToCode = {}
 Object.keys(codeToName).forEach (code) ->
 	nameToCode[codeToName[code]] = code

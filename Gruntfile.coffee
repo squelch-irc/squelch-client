@@ -29,6 +29,16 @@ module.exports = (grunt) ->
                     level: 'ignore'
                 max_line_length: # I trust you
                     level: 'ignore'
+                arrow_spacing:
+                    level: 'warn'
+                colon_assignment_spacing:
+                    level: 'warn'
+                    spacing:
+                        left: 0
+                        right: 1
+                no_unnecessary_double_quotes:
+                    level: 'warn'
+                
 
         mochaTest:
             dist:
@@ -41,9 +51,9 @@ module.exports = (grunt) ->
 
         codo:
             options:
-                title: "node-irc-client"
-                output: "docs/"
-                inputs: ["src/"]
+                title: 'node-irc-client'
+                output: 'docs/'
+                inputs: ['src/']
 
     grunt.event.on 'coffee.error', (msg) ->
         grunt.log.write msg

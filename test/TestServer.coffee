@@ -22,7 +22,7 @@ class TestServer extends EventEmitter2
 
 		socketListener = (socket) =>
 			if @socket?
-				throw new Error "This TestServer already has a client connected. Cannot connect more than one client to a test server."
+				throw new Error 'This TestServer already has a client connected. Cannot connect more than one client to a test server.'
 			@socket = socket
 			@socket.on 'data', (data) =>
 				for actual in data.toString('utf8').split('\r\n').filter((i) -> i)
@@ -35,7 +35,7 @@ class TestServer extends EventEmitter2
 						expected.deferred.reject {expected: expected.line, actual: actual}
 		if ssl
 			# TODO: do this with cert and key
-			throw new Error "NOT YET IMPLEMENTED"
+			throw new Error 'NOT YET IMPLEMENTED'
 		else
 			@server = net.createServer socketListener
 				.listen(port)
