@@ -4,7 +4,7 @@
 An IRC Client for Node.js written in CoffeeScript.
 
 ## Documentation
-You can find the full documentation [here](http://rahatarmanahmed.github.io/node-irc-client/docs/index.html).
+You can find the full documentation [here](http://rahatarmanahmed.github.io/node-irc-client/).
 
 
 ## Installation
