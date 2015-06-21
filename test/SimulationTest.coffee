@@ -21,6 +21,7 @@ cleanUp = (client, server, done) ->
 	if client.isConnected()
 		client.forceQuit()
 		server.expect 'QUIT'
+	else
 	server.close()
 	.then done
 
@@ -152,6 +153,7 @@ describe 'handleReply simulations', ->
 
 		it 'should save its given nick', ->
 			client._.nick.should.equal "PakaluPapito"
+
 
 		it 'should emit a connect event with the right nick', (done) ->
 			server = new TestServer 6667

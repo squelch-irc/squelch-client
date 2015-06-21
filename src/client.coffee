@@ -2,8 +2,9 @@ net = require 'net'
 tls = require 'tls'
 path = require 'path'
 EventEmitter2 = require('eventemitter2').EventEmitter2
-parseMessage = require 'irc-message'
+ircMsg = require 'irc-message'
 Promise = require 'bluebird'
+streamMap = require 'through2-map'
 cbNoop = (err) -> throw err if err
 
 Channel = require './channel'
@@ -36,11 +37,9 @@ defaultOpt =
 Helper method to get nick or server out of the prefix of a message
 ###
 getSender = (parsedReply) ->
-	if parsedReply.prefixIsHostmask()
-		return parsedReply.parseHostmaskFromPrefix().nickname
-	else if parsedReply.prefix?
-		return parsedReply.prefix
-	return undefined
+	if parsedReply.prefix.isServer
+		return parsedReply.prefix.host
+	return parsedReply.prefix.nick
 
 ###
 An IRC Client.
@@ -198,8 +197,13 @@ class Client extends EventEmitter2
 				@once 'connect', (nick) ->
 					resolve nick
 				@log 'Connected'
-				@conn.on 'data', (data) =>
-					
+				stream = @conn
+				if @opt.stripColors
+					stream = stream.pipe streamMap wantStrings: true, @stripColors
+				if @opt.stripStyles
+					stream = stream.pipe streamMap wantStrings: true, @stripStyles
+				stream = stream.pipe ircMsg.createStream parsePrefix: true
+				stream.on 'data', (data) =>
 					clearTimeout @_.timeout if @_.timeout
 					@_.timeout = setTimeout =>
 						@raw 'PING :ruthere'
@@ -207,14 +211,11 @@ class Client extends EventEmitter2
 						@_.timeout = setTimeout =>
 							seconds = (new Date().getTime() - pingTime) / 1000
 							@emit 'timeout', seconds
-							@handleReply "ERROR :Ping Timeout(#{seconds} seconds)"
+							@handleReply ircMsg.parse "ERROR :Ping Timeout(#{seconds} seconds)"
 						, @opt.timeout
 					, @opt.timeout
-					for line in data.toString().split '\r\n'
-						@handleReply line
-				# @conn.on 'close', =>
-				# 	@log 'closing'
-				@conn.on 'error', =>
+					@handleReply data
+				@conn.on 'error', (e) =>
 					console.error 'Disconnected by network error.'
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
 						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
@@ -241,6 +242,9 @@ class Client extends EventEmitter2
 					onConnect()
 			else
 				@conn = net.connect @opt.port, @opt.server, onConnect
+
+			
+
 			@conn.once 'error', errorListener
 		.nodeify cb or cbNoop
 
@@ -287,7 +291,7 @@ class Client extends EventEmitter2
 		# TODO: write test for this
 		@raw 'QUIT' + (if reason? then " :#{reason}" else ''), false
 		@_.disconnecting = true
-		@handleReply 'ERROR :Force Quit'
+		@handleReply ircMsg.parse 'ERROR :Force Quit'
 
 	###
 	Sends a raw message to the server. Automatically appends '\r\n'.
@@ -701,216 +705,212 @@ class Client extends EventEmitter2
 	###
 	@nodoc
 	###
-	handleReply: (reply) ->
-		if @opt.stripColors
-			reply = @stripColors reply
-		if @opt.stripStyles
-			reply = @stripStyles reply
-		@log reply
-		parsedReply = parseMessage reply
-		if parsedReply?
-			switch parsedReply.command
-				when 'JOIN'
-					nick = getSender parsedReply
-					chan = parsedReply.params[0]
-					if nick is @nick()
-						@_.channels[chan.toLowerCase()] = new Channel @, chan
-					else
-						@_.channels[chan.toLowerCase()]._.users[nick] = ''
-					@emit 'join', chan, nick
-					@emit ['join', chan], chan, nick
-					# Because no one likes case sensitivity
-					if chan.toLowerCase() isnt chan
-						@emit ['join', chan.toLowerCase()], chan, nick
-				when 'PART'
-					nick = getSender parsedReply
-					chan = parsedReply.params[0]
-					reason = parsedReply.params[1]
-					if nick is @nick()
-						delete @_.channels[chan.toLowerCase()]
-						@join chan if @opt.autoRejoin
-					else
-						users = @_.channels[chan.toLowerCase()]._.users
-						for user of users when user is nick
-							delete users[nick]
-							break
-					@emit 'part', chan, nick, reason
-					@emit ['part', chan], chan, nick, reason
-					# Because no one likes case sensitivity
-					if chan.toLowerCase() isnt chan
-						@emit ['part', chan.toLowerCase()], chan, nick
-				when 'NICK'
-					oldnick = getSender parsedReply
-					newnick = parsedReply.params[0]
-					if oldnick is @nick()
-						@_.nick = newnick
-					@emit 'nick', oldnick, newnick
-					# TODO: update channel user info?
-				when 'PRIVMSG'
-					from = getSender parsedReply
-					to = parsedReply.params[0]
-					msg = parsedReply.params[1]
-					if msg.lastIndexOf('\u0001ACTION', 0) is 0 # startsWith
-						@emit 'action', from, to, msg.substring(8, msg.length-1)
-					else
-						@emit 'msg', from, to, msg
-				when 'NOTICE'
-					from = getSender parsedReply
-					to = parsedReply.params[0]
-					msg = parsedReply.params[1]
-					@emit 'notice', from, to, msg
-				when 'INVITE'
-					from = getSender parsedReply
-					# don't need to because you don't get invites for other ppl
-					chan = parsedReply.params[1]
-					@emit 'invite', from, chan
-				when 'KICK'
-					kicker = getSender parsedReply
-					chan = parsedReply.params[0]
-					nick = parsedReply.params[1]
-					reason = parsedReply.params[2]
-					if nick is @nick()
-						delete @_.channels[chan.toLowerCase()]
-						@join chan if @opt.autoRejoin
-					else
-						users = @_.channels[chan.toLowerCase()]._.users
-						for user of users when user is nick
-							delete users[nick]
-							break
-					@emit 'kick', chan, nick, kicker, reason
-				when 'MODE'
-					sender = getSender parsedReply
-					chan = parsedReply.params[0]
-					user = chan if not @isChannel(chan)
-					modes = parsedReply.params[1]
-					params = parsedReply.params[2..] if parsedReply.params.length > 2
-					adding = true
-					for c in modes
-						if c is '+'
-							adding = true
-							continue
-						if c is '-'
-							adding = false
-							continue
-						if not user? # We're dealin with a real deal channel mode
-							param = undefined
-							# Cases where mode has param
-							if @_.chanmodes[0].indexOf(c) isnt -1 or
-							@_.chanmodes[1].indexOf(c) isnt -1 or
-							(adding and @_.chanmodes[2].indexOf(c) isnt -1) or
-							@_.prefix[c]?
-								param = params.shift()
-							if @_.prefix[c]? # Update user's mode in channel
-								@getChannel(chan)._.users[param] = if adding then @_.prefix[c] else ''
-							else # Update channel mode
-								channelModes = @getChannel(chan)._.mode
-								if adding
-									channelModes.push c
-								if not adding
-									index = channelModes.indexOf c
-									channelModes[index..index] = [] if index isnt -1
-							@emit '+mode', chan, sender, c, param if adding
-							@emit '-mode', chan, sender, c, param if not adding
-						else # We're dealing with some stupid user mode
-							# Ain't no one got time to keep track of user modes
-							@emit '+usermode', user, c, sender if adding
-							@emit '-usermode', user, c, sender if not adding
+	handleReply: (parsedReply) ->
+		if not parsedReply?
+			return
+		@log '<-' + parsedReply.raw
+		switch parsedReply.command
+			when 'JOIN'
+				nick = getSender parsedReply
+				chan = parsedReply.params[0]
+				if nick is @nick()
+					@_.channels[chan.toLowerCase()] = new Channel @, chan
+				else
+					@_.channels[chan.toLowerCase()]._.users[nick] = ''
+				@emit 'join', chan, nick
+				@emit ['join', chan], chan, nick
+				# Because no one likes case sensitivity
+				if chan.toLowerCase() isnt chan
+					@emit ['join', chan.toLowerCase()], chan, nick
+			when 'PART'
+				nick = getSender parsedReply
+				chan = parsedReply.params[0]
+				reason = parsedReply.params[1]
+				if nick is @nick()
+					delete @_.channels[chan.toLowerCase()]
+					@join chan if @opt.autoRejoin
+				else
+					users = @_.channels[chan.toLowerCase()]._.users
+					for user of users when user is nick
+						delete users[nick]
+						break
+				@emit 'part', chan, nick, reason
+				@emit ['part', chan], chan, nick, reason
+				# Because no one likes case sensitivity
+				if chan.toLowerCase() isnt chan
+					@emit ['part', chan.toLowerCase()], chan, nick
+			when 'NICK'
+				oldnick = getSender parsedReply
+				newnick = parsedReply.params[0]
+				if oldnick is @nick()
+					@_.nick = newnick
+				@emit 'nick', oldnick, newnick
+				# TODO: update channel user info?
+			when 'PRIVMSG'
+				from = getSender parsedReply
+				to = parsedReply.params[0]
+				msg = parsedReply.params[1]
+				if msg.lastIndexOf('\u0001ACTION', 0) is 0 # startsWith
+					@emit 'action', from, to, msg.substring(8, msg.length-1)
+				else
+					@emit 'msg', from, to, msg
+			when 'NOTICE'
+				from = getSender parsedReply
+				to = parsedReply.params[0]
+				msg = parsedReply.params[1]
+				@emit 'notice', from, to, msg
+			when 'INVITE'
+				from = getSender parsedReply
+				# don't need to because you don't get invites for other ppl
+				chan = parsedReply.params[1]
+				@emit 'invite', from, chan
+			when 'KICK'
+				kicker = getSender parsedReply
+				chan = parsedReply.params[0]
+				nick = parsedReply.params[1]
+				reason = parsedReply.params[2]
+				if nick is @nick()
+					delete @_.channels[chan.toLowerCase()]
+					@join chan if @opt.autoRejoin
+				else
+					users = @_.channels[chan.toLowerCase()]._.users
+					for user of users when user is nick
+						delete users[nick]
+						break
+				@emit 'kick', chan, nick, kicker, reason
+			when 'MODE'
+				sender = getSender parsedReply
+				chan = parsedReply.params[0]
+				user = chan if not @isChannel(chan)
+				modes = parsedReply.params[1]
+				params = parsedReply.params[2..] if parsedReply.params.length > 2
+				adding = true
+				for c in modes
+					if c is '+'
+						adding = true
+						continue
+					if c is '-'
+						adding = false
+						continue
+					if not user? # We're dealin with a real deal channel mode
+						param = undefined
+						# Cases where mode has param
+						if @_.chanmodes[0].indexOf(c) isnt -1 or
+						@_.chanmodes[1].indexOf(c) isnt -1 or
+						(adding and @_.chanmodes[2].indexOf(c) isnt -1) or
+						@_.prefix[c]?
+							param = params.shift()
+						if @_.prefix[c]? # Update user's mode in channel
+							@getChannel(chan)._.users[param] = if adding then @_.prefix[c] else ''
+						else # Update channel mode
+							channelModes = @getChannel(chan)._.mode
+							if adding
+								channelModes.push c
+							if not adding
+								index = channelModes.indexOf c
+								channelModes[index..index] = [] if index isnt -1
+						@emit '+mode', chan, sender, c, param if adding
+						@emit '-mode', chan, sender, c, param if not adding
+					else # We're dealing with some stupid user mode
+						# Ain't no one got time to keep track of user modes
+						@emit '+usermode', user, c, sender if adding
+						@emit '-usermode', user, c, sender if not adding
 
 
-					# @emit 'mode', chan, sender, mode
-				when 'QUIT'
-					nick = getSender parsedReply
-					reason = parsedReply.params[0]
-					if nick is @nick() # Dunno if this ever happens.
-						@_.channels = {}
-					else
-						for name, chan of @_.channels
-							for user of chan._.users when user is nick
-								delete chan._.users[nick]
-								break
-					@emit 'quit', nick, reason
-				when 'PING'
-					@raw "PONG :#{parsedReply.params[0]}", false
-				when 'ERROR'
-					@conn.destroy()
+				# @emit 'mode', chan, sender, mode
+			when 'QUIT'
+				nick = getSender parsedReply
+				reason = parsedReply.params[0]
+				if nick is @nick() # Dunno if this ever happens.
 					@_.channels = {}
-					@_.messageQueue = []
-					clearTimeout @_.messageQueueTimeout
-					clearTimeout @_.timeout
-					@conn = null
-					@_.connected = false
-					@emit 'error', parsedReply.params[0] if not @_.disconnecting
-					@_.disconnecting = false
-					@emit 'disconnect'
-					@log 'Disconnected from server'
-					if @opt.autoReconnect and @opt.autoReconnectTries > 0
-						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
-						setTimeout =>
-							@connect @opt.autoReconnectTries
-						, @opt.reconnectDelay
-				when getReplyCode('RPL_WELCOME')
-					@_.connected = true
-					@_.nick = parsedReply.params[0]
-					@emit 'connect', @_.nick
-					@join @opt.channels
+				else
+					for name, chan of @_.channels
+						for user of chan._.users when user is nick
+							delete chan._.users[nick]
+							break
+				@emit 'quit', nick, reason
+			when 'PING'
+				@raw "PONG :#{parsedReply.params[0]}", false
+			when 'ERROR'
+				@conn.destroy()
+				@_.channels = {}
+				@_.messageQueue = []
+				clearTimeout @_.messageQueueTimeout
+				clearTimeout @_.timeout
+				@conn = null
+				@_.connected = false
+				@emit 'error', parsedReply.params[0] if not @_.disconnecting
+				@_.disconnecting = false
+				@emit 'disconnect'
+				@log 'Disconnected from server'
+				if @opt.autoReconnect and @opt.autoReconnectTries > 0
+					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
+					setTimeout =>
+						@connect @opt.autoReconnectTries
+					, @opt.reconnectDelay
+			when getReplyCode('RPL_WELCOME')
+				@_.connected = true
+				@_.nick = parsedReply.params[0]
+				@emit 'connect', @_.nick
+				@join @opt.channels
 
-				when getReplyCode('RPL_YOURHOST')
-					@_.greeting.yourHost = parsedReply.params[1]
-				when getReplyCode('RPL_CREATED')
-					@_.greeting.created = parsedReply.params[1]
-				when getReplyCode('RPL_MYINFO')
-					@_.greeting.myInfo = parsedReply.params[1..].join ' '
-				when getReplyCode('RPL_ISUPPORT')
-					for item in parsedReply.params[1..]
-						continue if item.indexOf(' ') isnt -1
-						split = item.split '='
-						if split.length is 1
-							@_.iSupport[item] = true
-						else
-							@_.iSupport[split[0]] = split[1]
-						switch split[0]
-							when 'PREFIX'
-								match = /\((.+)\)(.+)/.exec(split[1])
-								@_.prefix = {}
-								@_.prefix[match[1][i]] = match[2][i] for i in [0...match[1].length]
-								@_.reversePrefix = {}
-								@_.reversePrefix[match[2][i]] = match[1][i] for i in [0...match[1].length]
-							when 'CHANMODES'
-								@_.chanmodes = split[1].split ','
-								# chanmodes[0,1] always require param
-								# chanmodes[2] requires param on set
-								# chanmodes[3] never require param
-								
-				when getReplyCode('RPL_NOTOPIC')
-					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ''
-				when getReplyCode('RPL_TOPIC') # TODO: write test for this
-					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = parsedReply.params[2]
-				when getReplyCode('RPL_TOPIC_WHO_TIME')
-					chan = @_.channels[parsedReply.params[1].toLowerCase()]
-					chan._.topicSetter = parsedReply.params[2]
-					chan._.topicTime = new Date parseInt(parsedReply.params[3])
-				when getReplyCode('RPL_NAMREPLY') # TODO: write test for this
-					# TODO: trigger event on name update
-					chan = @_.channels[parsedReply.params[2].toLowerCase()]
-					names = parsedReply.params[3].split ' '
-					for name in names
-						if @_.reversePrefix[name[0]]?
-							chan._.users[name[1..]] = name[0]
-						else
-							chan._.users[name] = ''
-				when getReplyCode('RPL_MOTD')
-					@_.MOTD += parsedReply.params[1] + '\r\n'
-				when getReplyCode('RPL_MOTDSTART')
-					@_.MOTD = parsedReply.params[1] + '\r\n'
-				when getReplyCode('RPL_ENDOFMOTD')
-					@emit 'motd', @_.MOTD
-
-				when getReplyCode('ERR_NICKNAMEINUSE')
-					if @opt.autoNickChange
-						@_.numRetries++
-						@nick @opt.nick + @_.numRetries
+			when getReplyCode('RPL_YOURHOST')
+				@_.greeting.yourHost = parsedReply.params[1]
+			when getReplyCode('RPL_CREATED')
+				@_.greeting.created = parsedReply.params[1]
+			when getReplyCode('RPL_MYINFO')
+				@_.greeting.myInfo = parsedReply.params[1..].join ' '
+			when getReplyCode('RPL_ISUPPORT')
+				for item in parsedReply.params[1..]
+					continue if item.indexOf(' ') isnt -1
+					split = item.split '='
+					if split.length is 1
+						@_.iSupport[item] = true
 					else
-						@disconnect()
+						@_.iSupport[split[0]] = split[1]
+					switch split[0]
+						when 'PREFIX'
+							match = /\((.+)\)(.+)/.exec(split[1])
+							@_.prefix = {}
+							@_.prefix[match[1][i]] = match[2][i] for i in [0...match[1].length]
+							@_.reversePrefix = {}
+							@_.reversePrefix[match[2][i]] = match[1][i] for i in [0...match[1].length]
+						when 'CHANMODES'
+							@_.chanmodes = split[1].split ','
+							# chanmodes[0,1] always require param
+							# chanmodes[2] requires param on set
+							# chanmodes[3] never require param
+							
+			when getReplyCode('RPL_NOTOPIC')
+				@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ''
+			when getReplyCode('RPL_TOPIC') # TODO: write test for this
+				@_.channels[parsedReply.params[1].toLowerCase()]._.topic = parsedReply.params[2]
+			when getReplyCode('RPL_TOPIC_WHO_TIME')
+				chan = @_.channels[parsedReply.params[1].toLowerCase()]
+				chan._.topicSetter = parsedReply.params[2]
+				chan._.topicTime = new Date parseInt(parsedReply.params[3])
+			when getReplyCode('RPL_NAMREPLY') # TODO: write test for this
+				# TODO: trigger event on name update
+				chan = @_.channels[parsedReply.params[2].toLowerCase()]
+				names = parsedReply.params[3].split ' '
+				for name in names
+					if @_.reversePrefix[name[0]]?
+						chan._.users[name[1..]] = name[0]
+					else
+						chan._.users[name] = ''
+			when getReplyCode('RPL_MOTD')
+				@_.MOTD += parsedReply.params[1] + '\r\n'
+			when getReplyCode('RPL_MOTDSTART')
+				@_.MOTD = parsedReply.params[1] + '\r\n'
+			when getReplyCode('RPL_ENDOFMOTD')
+				@emit 'motd', @_.MOTD
+
+			when getReplyCode('ERR_NICKNAMEINUSE')
+				if @opt.autoNickChange
+					@_.numRetries++
+					@nick @opt.nick + @_.numRetries
+				else
+					@disconnect()
 		@emit 'raw', parsedReply
 
 module.exports = Client

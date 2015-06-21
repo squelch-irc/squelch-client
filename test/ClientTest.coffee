@@ -204,7 +204,7 @@ describe 'Client', ->
 				done()
 			server.expect 'NICK !@#$%^&*()'
 			.then ->
-				client.handleReply ':irc.ircnet.net 432 PakaluPapito !@#$%^&*() :Erroneous Nickname'
+				server.reply ':irc.ircnet.net 432 PakaluPapito ass :Erroneous Nickname'
 
 		it 'should resolve the promise on success', (done) ->
 			nickPromise = client.nick 'PricklyPear'
