@@ -21,7 +21,6 @@ cleanUp = (client, server, done) ->
 	if client.isConnected()
 		client.forceQuit()
 		server.expect 'QUIT'
-	else
 	server.close()
 	.then done
 

@@ -120,8 +120,6 @@ describe 'Client', ->
 	describe 'isConnected', ->
 		beforeEach (done) ->
 			cleanUp client, server, done
-		afterEach (done) ->
-			cleanUp client, server, done
 		it 'should only be true when connected to the server', ->
 
 			client = new Client
@@ -155,6 +153,24 @@ describe 'Client', ->
 			client.verbose false
 			client.verbose().should.be.false
 			client.opt.verbose.should.be.false
+
+	describe 'autoRejoin', ->
+		it 'should send a join command after a KICK', (done) ->
+			client.autoRejoin true
+			joinPromise = client.join ['#nice']
+			server.expect 'JOIN #nice'
+			.then ->
+				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #nice'
+				server.expect 'TOPIC #nice'
+			.then -> joinPromise
+			.then (e) ->
+				server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #nice PakaluPapito :Nice ppl only'
+				server.expect 'JOIN #nice'
+			.then done
+			.catch done
+
+
+
 
 	describe 'kick', ->
 		it 'with single chan and nick', (done) ->

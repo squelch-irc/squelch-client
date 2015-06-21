@@ -728,7 +728,6 @@ class Client extends EventEmitter2
 				reason = parsedReply.params[1]
 				if nick is @nick()
 					delete @_.channels[chan.toLowerCase()]
-					@join chan if @opt.autoRejoin
 				else
 					users = @_.channels[chan.toLowerCase()]._.users
 					for user of users when user is nick
