@@ -4,6 +4,7 @@ module.exports = (grunt) ->
     grunt.task.loadNpmTasks 'grunt-contrib-coffee'
     grunt.task.loadNpmTasks 'grunt-coffeelint'
     grunt.task.loadNpmTasks 'grunt-codo'
+    grunt.task.loadNpmTasks 'grunt-gh-pages'
 
     grunt.initConfig
         pkg: 
@@ -54,11 +55,16 @@ module.exports = (grunt) ->
                 title: 'node-irc-client'
                 output: 'docs/'
                 inputs: ['src/']
+        'gh-pages':
+            options:
+                base: 'docs'
+            src: ['**']
 
     grunt.event.on 'coffee.error', (msg) ->
         grunt.log.write msg
 
     grunt.registerTask 'docs', ['codo']
+    grunt.registerTask 'push-docs', ['codo', 'gh-pages']
     grunt.registerTask 'lint', ['coffeelint']
     grunt.registerTask 'build', ['test', 'coffee:dist', 'docs']
     grunt.registerTask 'test', ['lint', 'mochaTest']
