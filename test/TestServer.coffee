@@ -17,6 +17,7 @@ defer = ->
 
 class TestServer extends EventEmitter2
 	constructor: (port, ssl = false) ->
+		@isVerbose = false
 		super()
 		@expectQueue = []
 
@@ -26,6 +27,7 @@ class TestServer extends EventEmitter2
 			@socket = socket
 			@socket.on 'data', (data) =>
 				for actual in data.toString('utf8').split('\r\n').filter((i) -> i)
+					@log "Received #{actual}"
 					expected = @expectQueue.shift()
 					if not expected?
 						throw new Error "Did not expect client to send: #{actual}"
@@ -40,6 +42,7 @@ class TestServer extends EventEmitter2
 			@server = net.createServer socketListener
 				.listen(port)
 
+	log: (msg) -> console.log msg if @isVerbose
 	expect: (lines) =>
 		lines = [lines] if lines not instanceof Array
 		promises = []
@@ -47,6 +50,7 @@ class TestServer extends EventEmitter2
 			expected =
 				line: line
 				deferred: defer()
+			@log "Expecting #{line}"
 			@expectQueue.push expected
 			promises.push expected.deferred.promise
 		return Promise.all(promises).return().catch((e) -> e.actual.should.equal e.expected)
@@ -57,6 +61,14 @@ class TestServer extends EventEmitter2
 		else
 			@socket.write rawLine + '\r\n'
 
-	close: => @server.close()
+	close: =>
+		return new Promise (resolve) =>
+			@server.close()
+			@socket.end() if @socket
+			@server.once 'close', ->
+				resolve()
+
+	verbose: (enabled) =>
+		@isVerbose = enabled
 
 module.exports = TestServer

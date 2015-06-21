@@ -17,11 +17,12 @@ async = (done) ->
 			try callback args...
 			catch e then done e
 
-cleanUp = (client, server) ->
+cleanUp = (client, server, done) ->
 	if client.isConnected()
 		client.forceQuit()
 		server.expect 'QUIT'
 	server.close()
+	.then done
 
 multiDone = (num, done) ->
 	return (args...) ->
@@ -36,15 +37,19 @@ describe 'handleReply simulations', ->
 			nick: "PakaluPapito"
 			messageDelay: 0
 			autoReconnect: false
-			autoConnect: true
+			autoConnect: false
 			verbose: false
+		connectPromise = client.connect()
 		server.expect [
 			'NICK PakaluPapito'
 			'USER NodeIRCClient 8 * :NodeIRCClient'
 		]
 		.then ->
+			server.reply ":localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
+			connectPromise
+		.then (nick) ->
+			nick.should.equal 'PakaluPapito'
 			server.reply [
-				":localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
 				":availo.esper.net 002 PakaluPapito :Your host is irc.ircnet.net[127.0.0.1/6667], running version charybdis-3.3.0"
 				":availo.esper.net 003 PakaluPapito :This server was created Sun Feb 5 2012 at 23:12:30 CET"
 				":availo.esper.net 004 PakaluPapito irc.ircnet.net charybdis-3.3.0 DQRSZagiloswz CFILPQbcefgijklmnopqrstvz bkloveqjfI"
@@ -63,16 +68,15 @@ describe 'handleReply simulations', ->
 				":availo.esper.net 366 PakaluPapito #kellyirc :End of /NAMES list."
 				"PING :finished"
 			]
-			client.on 'connect', ->
-				server.expect [
-					"TOPIC #sexy"
-					"TOPIC #Furry"
-					"PONG :finished"
-				]
-				.then done
+			server.expect [
+				"TOPIC #sexy"
+				"TOPIC #Furry"
+				"PONG :finished"
+			]
+		.then done
 
-	afterEach ->
-		cleanUp client, server
+	afterEach (done) ->
+		cleanUp client, server, done
 		# client.handleReplies [
 		# 	":irc.ircnet.net 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito"
 		# 	":availo.esper.net 251 PakaluPapito :There are 13 users and 7818 invisible on 11 servers"
@@ -143,11 +147,13 @@ describe 'handleReply simulations', ->
 			server.reply ":Kurea!~Kurea@162.243.123.251 PRIVMSG #kellyirc :Current modules are..."
 
 	describe '001', ->
+		beforeEach (done) ->
+			cleanUp client, server, done
+
 		it 'should save its given nick', ->
 			client._.nick.should.equal "PakaluPapito"
 
 		it 'should emit a connect event with the right nick', (done) ->
-			cleanUp client, server
 			server = new TestServer 6667
 			client = new Client
 				server: "localhost"
@@ -165,7 +171,6 @@ describe 'handleReply simulations', ->
 					done()
 					
 		it 'should auto join the channels in opt.channels', (done) ->
-			cleanUp client, server
 			server = new TestServer 6667
 			client = new Client
 				server: "localhost"
@@ -205,9 +210,10 @@ describe 'handleReply simulations', ->
 			]
 
 	describe '433', ->
+		beforeEach (done) ->
+			cleanUp client, server, done
 		it 'should automatically try a new nick', (done) ->
 			# This happens before the 001 event so need to make a new client
-			cleanUp client, server
 			server = new TestServer 6667
 			client = new Client
 				server: "localhost"
@@ -481,10 +487,10 @@ describe 'handleReply simulations', ->
 				done()
 			server.reply ":CoolIRCOp!~wow@cpe-76-183-227-155.tx.res.rr.com MODE Freek -o"
 
-	describe 'timeout', ->
+	describe.skip 'timeout', ->
 		lastReplyTime = null
 		beforeEach (done) ->
-			cleanUp client, server
+			cleanUp client, server, done
 			server = new TestServer 6667
 			client = new Client
 				server: "localhost"

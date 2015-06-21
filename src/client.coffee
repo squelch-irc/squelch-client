@@ -3,6 +3,8 @@ tls = require 'tls'
 path = require 'path'
 EventEmitter2 = require('eventemitter2').EventEmitter2
 parseMessage = require 'irc-message'
+Promise = require 'bluebird'
+cbNoop = (err) -> throw err if err
 
 Channel = require './channel'
 {getReplyCode, getReplyName} = require './replies'
@@ -157,110 +159,122 @@ class Client extends EventEmitter2
 	###
 	@overload #connect()
 	  Connects to the server.
+	  @return [Promise<String,Error>] A promise that is resolves with the nick on successful disconnect, and rejects with an Error on connection error.
 	@overload #connect(tries)
 	  Connects to the server.
 	  @param tries [Integer] Number of times to retry connecting. If -1, the client will try to connect infinitely many times.
+	  @return [Promise<String,Error>] A promise that is resolves with the nick on successful disconnect, and rejects with an Error on connection error.
 	@overload #connect(cb)
 	  Connects to the server.
 	  @param cb [Function] Optional callback to be called on 'connect' event.
+	  @return [Promise<String,Error>] A promise that is resolves with the nick on successful disconnect, and rejects with an Error on connection error.
 	@overload #connect(tries, cb)
 	  Connects to the server.
 	  @param tries [Integer] Number of times to retry connecting. If -1, the client will try to connect infinitely many times.
 	  @param cb [Function] Optional callback to be called on 'connect' event.
+	  @return [Promise<String,Error>] A promise that is resolves with the nick on successful disconnect, and rejects with an Error on connection error.
 	###
 	connect: (tries = 1, cb) ->
-		@log 'Connecting...'
-		if tries instanceof Function
-			cb = tries
-			tries = 1
-		tries--
+		return new Promise (resolve, reject) =>
+			@log 'Connecting...'
+			if tries instanceof Function
+				cb = tries
+				tries = 1
+			tries--
 
-		errorListener = (err) =>
-			console.error 'Unable to connect.'
-			console.error err
-			if tries > 0 or tries is -1
-				console.error "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
-				setTimeout =>
-					@connect tries, cb
-				, @opt.reconnectDelay
-		onConnect = =>
-			@conn.setEncoding 'utf8'
-			@conn.removeListener 'error', errorListener
-			if cb instanceof Function
-				@once 'connect', (nick) ->
-					cb(nick)
-			@log 'Connected'
-			@conn.on 'data', (data) =>
-				
-				clearTimeout @_.timeout if @_.timeout
-				@_.timeout = setTimeout =>
-					@raw 'PING :ruthere'
-					pingTime = new Date().getTime()
-					@_.timeout = setTimeout =>
-						seconds = (new Date().getTime() - pingTime) / 1000
-						@emit 'timeout', seconds
-						@handleReply "ERROR :Ping Timeout(#{seconds} seconds)"
-					, @opt.timeout
-				, @opt.timeout
-				for line in data.toString().split '\r\n'
-					@handleReply line
-			# @conn.on 'close', =>
-			# 	@log 'closing'
-			@conn.on 'error', =>
-				console.error 'Disconnected by network error.'
-				if @opt.autoReconnect and @opt.autoReconnectTries > 0
-					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
+			errorListener = (err) =>
+				console.error 'Unable to connect.'
+				console.error err
+				if tries > 0 or tries is -1
+					console.error "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
 					setTimeout =>
-						@connect @opt.autoReconnectTries
+						@connect tries, cb
 					, @opt.reconnectDelay
-			@raw "PASS #{@opt.password}", false if @opt.password?
-			@raw "NICK #{@opt.nick}", false
-			@raw "USER #{@opt.username} 8 * :#{@opt.realname}", false
-		if !!@opt.ssl
-			tlsOptions = if @opt.ssl instanceof Object then @opt.ssl else {}
-			tlsOptions.rejectUnauthorized = false if @opt.selfSigned
-			@conn = tls.connect @opt.port, @opt.server, tlsOptions, =>
-				if not @conn.authorized
-					if @opt.selfSigned and (@conn.authorizationError is 'DEPTH_ZERO_SELF_SIGNED_CERT' or
-										@conn.authorizationError is 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' or
-										@conn.authorizationError is 'SELF_SIGNED_CERT_IN_CHAIN')
-						@log 'Connecting to server with self signed certificate'
-					else if @opt.certificateExpired and @conn.authorizationError is 'CERT_HAS_EXPIRED'
-						@log 'Connecting to server with expired certificate'
-					else
-						@log "Authorization error: #{@conn.authorizationError}"
-						return
-				onConnect()
-		else
-			@conn = net.connect @opt.port, @opt.server, onConnect
-		@conn.once 'error', errorListener
+				else
+					reject err
+			onConnect = =>
+				@conn.setEncoding 'utf8'
+				@conn.removeListener 'error', errorListener
+				@once 'connect', (nick) ->
+					resolve nick
+				@log 'Connected'
+				@conn.on 'data', (data) =>
+					
+					clearTimeout @_.timeout if @_.timeout
+					@_.timeout = setTimeout =>
+						@raw 'PING :ruthere'
+						pingTime = new Date().getTime()
+						@_.timeout = setTimeout =>
+							seconds = (new Date().getTime() - pingTime) / 1000
+							@emit 'timeout', seconds
+							@handleReply "ERROR :Ping Timeout(#{seconds} seconds)"
+						, @opt.timeout
+					, @opt.timeout
+					for line in data.toString().split '\r\n'
+						@handleReply line
+				# @conn.on 'close', =>
+				# 	@log 'closing'
+				@conn.on 'error', =>
+					console.error 'Disconnected by network error.'
+					if @opt.autoReconnect and @opt.autoReconnectTries > 0
+						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
+						setTimeout =>
+							@connect @opt.autoReconnectTries
+						, @opt.reconnectDelay
+				@raw "PASS #{@opt.password}", false if @opt.password?
+				@raw "NICK #{@opt.nick}", false
+				@raw "USER #{@opt.username} 8 * :#{@opt.realname}", false
+			if @opt.ssl
+				tlsOptions = if @opt.ssl instanceof Object then @opt.ssl else {}
+				tlsOptions.rejectUnauthorized = false if @opt.selfSigned
+				@conn = tls.connect @opt.port, @opt.server, tlsOptions, =>
+					if not @conn.authorized
+						if @opt.selfSigned and (@conn.authorizationError is 'DEPTH_ZERO_SELF_SIGNED_CERT' or
+											@conn.authorizationError is 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' or
+											@conn.authorizationError is 'SELF_SIGNED_CERT_IN_CHAIN')
+							@log 'Connecting to server with self signed certificate'
+						else if @opt.certificateExpired and @conn.authorizationError is 'CERT_HAS_EXPIRED'
+							@log 'Connecting to server with expired certificate'
+						else
+							@log "Authorization error: #{@conn.authorizationError}"
+							return
+					onConnect()
+			else
+				@conn = net.connect @opt.port, @opt.server, onConnect
+			@conn.once 'error', errorListener
+		.nodeify cb or cbNoop
 
 	###
 	@overload #disconnect()
 	  Disconnects from the server.
+	  @return [Promise<>] A promise that is resolved on successful disconnect.
 	@overload #disconnect(reason)
 	  Disconnects from the server.
 	  @param reason [String] The quit reason.
+	  @return [Promise<>] A promise that is resolved on successful disconnect.
 	@overload #disconnect(cb)
 	  Disconnects from the server.
 	  @param cb [Function] Callback to call on successful disconnect.
+	  @return [Promise<>] A promise that is resolved on successful disconnect.
 	@overload #disconnect(reason, cb)
 	  Disconnects from the server.
 	  @param reason [String] The quit reason.
 	  @param cb [Function] Callback to call on successful disconnect.
+	  @return [Promise<>] A promise that is resolved on successful disconnect.
 	###
 	disconnect: (reason, cb) ->
-		if reason instanceof Function
-			cb = reason
-			reason = undefined
-		@_.disconnecting = true
-		if reason?
-			@raw "QUIT :#{reason}", false
-		else
-			@raw 'QUIT', false
-		if cb instanceof Function
+		return new Promise (resolve) =>
+			if reason instanceof Function
+				cb = reason
+				reason = undefined
+			@_.disconnecting = true
+			if reason?
+				@raw "QUIT :#{reason}", false
+			else
+				@raw 'QUIT', false
 			@once 'disconnect', ->
-				cb()
+				resolve()
+		.nodeify cb or cbNoop
 
 	###
 	@overload #forceQuit()
@@ -360,25 +374,27 @@ class Client extends EventEmitter2
 	@overload #nick(desiredNick)
 	  Changes the client's nickname.
 	  @param desiredNick [String] The new nickname to change to.
+	  @return [Promise<Object,Object>] A promise that resolves with an object containing oldNick and newNick on successful nick change, and rejects with the parsed reply of the nick change error when the server rejects a nick change
 
 	@overload #nick(desiredNick, cb)
 	  Changes the client's nickname, with a callback for success or failure.
 	  @param desiredNick [String] The new nickname to change to.
 	  @param cb [function] (err, old, new) If successful, err will be undefined, otherwise err will be the parsed message object of the error
-
-	@todo Accept optional callback like Kurea does.
+	  @return [Promise<Object,Object>] A promise that resolves with an object containing oldNick and newNick on successful nick change, and rejects with the parsed reply of the nick change error when the server rejects a nick change
 	###
 	nick: (desiredNick, cb) ->
 		return @_.nick if not desiredNick?
-		if cb instanceof Function
+		return new Promise (resolve, reject) =>
 			nickListener = (oldNick, newNick) ->
 				if newNick is desiredNick
 					removeListeners()
-					cb undefined, oldNick, newNick
+					resolve {oldNick, newNick}
 			errListener = (msg) ->
 				if 431 <= parseInt(msg.command) <= 436 # irc errors for nicks
 					removeListeners()
-					cb msg
+					# Don't error while we're still trying to connect
+					if @isConnected()
+						reject msg
 
 			removeListeners = =>
 				@removeListener 'raw', errListener
@@ -387,54 +403,60 @@ class Client extends EventEmitter2
 			@on 'nick', nickListener
 			@on 'raw', errListener
 
-		@raw "NICK #{desiredNick}"
+			@raw "NICK #{desiredNick}"
+		.nodeify cb or cbNoop
 
 	###
 	@overload #join(chan)
 	  Joins a channel.
 
 	  @param chan [String, Array] The channel or array of channels to join
-
+	  @return [Promise<String>] A promise that resolves with the channel after successfully joining. If array of channels provided, it will resolve with them after they have all been joined.
 	@overload #join(chan, cb)
 	  Joins a channel.
 
 	  @param chan [String, Array] The channel or array of channels to join
 	  @param cb [Function] A callback that's called on successful join
+	  @return [Promise<String>] A promise that resolves with the channel after successfully joining. If array of channels provided, it will resolve with them after they have all been joined.
 	###
 	join: (chan, cb) ->
+		# TODO: handle join error replies!!
 		if chan instanceof Array
 			if chan.length is 0
 				return
 			@raw "JOIN #{chan.join()}"
-			if cb instanceof Function
-				for c in chan
-					do (c) =>
+			joinPromises = for c in chan
+				do (c) =>
+					new Promise (resolve) =>
 						@once ['join', c], (channel, nick) ->
-							cb(channel, nick)
+							resolve channel
+			return Promise.all(joinPromises).nodeify cb or cbNoop
 
 		else
-			@raw "JOIN #{chan}"
-			if cb instanceof Function
+			return new Promise (resolve) =>
+				@raw "JOIN #{chan}"
 				@once ['join', chan], (channel, nick) ->
-					cb(channel, nick)
+					resolve channel
+			.nodeify cb or cbNoop
 
 	###
 	@overload #part(chan)
 	  Parts a channel.
 
 	  @param chan [String, Array] The channel or array of channels to part
-
+	  @return [Promise<String>] A promise that resolves with the channel after successfully parting. If array of channels provided, it will resolve with them after they have all been parted.
 	@overload #part(chan, reason)
 	  Parts a channel with a reason message.
 
 	  @param chan [String, Array] The channel or array of channels to part
 	  @param reason [String] The reason message
-
+	  @return [Promise<String>] A promise that resolves with the channel after successfully parting. If array of channels provided, it will resolve with them after they have all been parted.
 	@overload #part(chan, cb)
 	  Parts a channel.
 
 	  @param chan [String, Array] The channel or array of channels to part
 	  @param cb [Function] A callback that's called on successful part
+	  @return [Promise<String>] A promise that resolves with the channel after successfully parting. If array of channels provided, it will resolve with them after they have all been parted.
 
 	@overload #part(chan, reason, cb)
 	  Parts a channel with a reason message.
@@ -442,6 +464,7 @@ class Client extends EventEmitter2
 	  @param chan [String, Array] The channel or array of channels to part
 	  @param reason [String] The reason message
 	  @param cb [Function] A callback that's called on successful part
+	  @return [Promise<String>] A promise that resolves with the channel after successfully parting. If array of channels provided, it will resolve with them after they have all been parted.
 	###
 	part: (chan, reason, cb) ->
 		if not reason?
@@ -453,16 +476,19 @@ class Client extends EventEmitter2
 			reason = ' :' + reason
 		if chan instanceof Array and chan.length > 0
 			@raw "PART #{chan.join()+reason}"
-			if cb instanceof Function
-				for c in chan
-					do (c) =>
+			partPromises = for c in chan
+				do (c) =>
+					new Promise (resolve) =>
 						@once ['part', c], (channel, nick) ->
-							cb(channel, nick)
+							resolve channel
+			return Promise.all(partPromises).nodeify cb or cbNoop
+
 		else
-			@raw "PART #{chan+reason}"
-			if cb instanceof Function
+			return new Promise (resolve) =>
+				@raw "PART #{chan+reason}"
 				@once ['part', chan], (channel, nick) ->
-					cb(channel, nick)
+					resolve channel
+			.nodeify cb or cbNoop
 
 	###
 	Returns if this client is connected.

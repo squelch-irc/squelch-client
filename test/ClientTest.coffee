@@ -17,11 +17,16 @@ async = (done) ->
 			try callback args...
 			catch e then done e
 
-cleanUp = (client, server) ->
+cleanUp = (client, server, done) ->
 	if client.isConnected()
 		client.forceQuit()
 		server.expect 'QUIT'
 	server.close()
+	.then done
+
+multiDone = (num, done) ->
+	return (args...) ->
+		done args... if --num is 0
 
 
 describe 'Client', ->
@@ -33,18 +38,23 @@ describe 'Client', ->
 			nick: 'PakaluPapito'
 			messageDelay: 0
 			autoReconnect: false
-			autoConnect: true
+			autoConnect: false
 			verbose: false
+		connectPromise = client.connect()
 		server.expect [
 			'NICK PakaluPapito'
 			'USER NodeIRCClient 8 * :NodeIRCClient'
 		]
 		.then ->
 			server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
-			client.on 'connect', -> done()
+			connectPromise
+		.then (nick) ->
+			nick.should.equal 'PakaluPapito'
+			done()
 
-	afterEach ->
-		cleanUp client, server
+
+	afterEach (done) ->
+		cleanUp client, server, done
 
 	describe 'constructor', ->
 		it 'should throw an error with no arguments', ->
@@ -75,11 +85,13 @@ describe 'Client', ->
 			client.disconnect()
 			server.expect 'QUIT'
 			.then done
+			.catch done
 
 		it 'should send a reason with the QUIT', (done) ->
 			client.disconnect 'Choke on it.'
 			server.expect 'QUIT :Choke on it.'
 			.then done
+			.catch done
 
 		it 'should run the callback on successful disconnect', (done) ->
 			client._.disconnecting.should.be.false
@@ -92,11 +104,24 @@ describe 'Client', ->
 				client._.disconnecting.should.be.true
 				server.reply 'ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)'
 
+		it 'should resolve the promise on successful disconnect', (done) ->
+			client._.disconnecting.should.be.false
+			disconnectPromise = client.disconnect()
+			server.expect 'QUIT'
+			.then ->
+				client._.disconnecting.should.be.true
+				server.reply 'ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)'
+				disconnectPromise
+			.then ->
+				client._.disconnecting.should.be.false
+				client.isConnected().should.be.false
+				done()
+
 	describe 'isConnected', ->
-		beforeEach ->
-			cleanUp client, server
-		afterEach ->
-			cleanUp client, server
+		beforeEach (done) ->
+			cleanUp client, server, done
+		afterEach (done) ->
+			cleanUp client, server, done
 		it 'should only be true when connected to the server', ->
 
 			client = new Client
@@ -136,14 +161,17 @@ describe 'Client', ->
 			client.kick '#persia', 'messenger'
 			server.expect 'KICK #persia messenger'
 			.then done
+			.catch done
 		it 'with multiple chans and nicks', (done) ->
 			client.kick ['#persia', '#empire'], ['messenger1', 'messenger2', 'messenger3']
 			server.expect 'KICK #persia,#empire messenger1,messenger2,messenger3'
 			.then done
+			.catch done
 		it 'with a reason', (done) ->
 			client.kick '#persia', 'messenger', 'THIS IS SPARTA!'
 			server.expect 'KICK #persia messenger :THIS IS SPARTA!'
 			.then done
+			.catch done
 			
 	describe 'nick', ->
 		it 'with no parameters should return the nick', ->
@@ -153,12 +181,13 @@ describe 'Client', ->
 			client.nick 'PricklyPear'
 			server.expect 'NICK PricklyPear'
 			.then done
+			.catch done
 
 		it 'with two params should callback on success', (done) ->
-			client.nick 'PricklyPear', async(done) (err, oldNick, newNick) ->
+			client.nick 'PricklyPear', async(done) (err, e) ->
 				should.not.exist err
-				oldNick.should.equal 'PakaluPapito'
-				newNick.should.equal 'PricklyPear'
+				e.oldNick.should.equal 'PakaluPapito'
+				e.newNick.should.equal 'PricklyPear'
 				client.listeners('nick').length.should.equal 0
 				client.listeners('raw').length.should.equal 0
 				done()
@@ -167,16 +196,29 @@ describe 'Client', ->
 				server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com NICK :PricklyPear'
 
 		it 'with two params should callback on error 432', (done) ->
-			client.nick '!@#$%^&*()', async(done) (err, oldNick, newNick) ->
+			client.nick '!@#$%^&*()', async(done) (err, e) ->
 				err.command.should.equal '432'
-				should.not.exist oldNick
-				should.not.exist newNick
+				should.not.exist e
 				client.listeners('nick').length.should.equal 0
 				client.listeners('raw').length.should.equal 0
 				done()
 			server.expect 'NICK !@#$%^&*()'
 			.then ->
-				client.handleReply ':irc.ircnet.net 432 Cage !@#$%^&*() :Erroneous Nickname'
+				client.handleReply ':irc.ircnet.net 432 PakaluPapito !@#$%^&*() :Erroneous Nickname'
+
+		it 'should resolve the promise on success', (done) ->
+			nickPromise = client.nick 'PricklyPear'
+			server.expect 'NICK PricklyPear'
+			.then ->
+				server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com NICK :PricklyPear'
+				return nickPromise
+			.then (e) ->
+				e.oldNick.should.equal 'PakaluPapito'
+				e.newNick.should.equal 'PricklyPear'
+				client.listeners('nick').length.should.equal 0
+				client.listeners('raw').length.should.equal 0
+				done()
+
 
 
 	describe 'msg', ->
@@ -188,6 +230,7 @@ describe 'Client', ->
 				'PRIVMSG HotGurl22 :i show u gas station'
 			]
 			.then done
+			.catch done
 
 	describe 'action', ->
 		it 'should send a PRIVMSG action', (done) ->
@@ -198,6 +241,7 @@ describe 'Client', ->
 				'PRIVMSG HotGurl22 :\u0001ACTION shows u camel\u0001'
 			]
 			.then done
+			.catch done
 
 	describe 'notice', ->
 		it 'should send a NOTICE', (done) ->
@@ -208,79 +252,84 @@ describe 'Client', ->
 				'NOTICE HotGurl22 :i show u gas station'
 			]
 			.then done
+			.catch done
 
 	describe 'join', ->
-		it 'a single channel', (done) ->
-			client.join '#furry'
-			server.expect 'JOIN #furry'
-			.then done
-
 		it 'a single channel with a callback', (done) ->
-			client.join '#furry', async(done) (chan, nick) ->
+			client.join '#furry', async(done) (err, chan) ->
+				should.not.exist err
 				chan.should.be.equal '#furry'
-				nick.should.be.equal 'PakaluPapito'
 				server.expect 'TOPIC #furry' # channel.coffee will auto ask for topic on creation
 				.then done
+				.catch done
 			server.expect 'JOIN #furry'
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
 
-		it 'an array of channels', (done) ->
-			client.join ['#furry', '#wizard', '#jayleno']
-			server.expect 'JOIN #furry,#wizard,#jayleno'
-			.then done
+		it 'an array of channels with a callback', (done) ->
+			done = multiDone 2, done
+			client.join ['#furry', '#wizard'], (err, channels) ->
+				should.not.exist err
+				channels[0].should.be.equal '#furry'
+				channels[1].should.be.equal '#wizard'
+				done()
 
-		it 'an array of channels with a callback should work for one channel in the array', (done) ->
-			client.join ['#furry', '#wizard'], async(done) (chan, nick) ->
-				chan.should.be.equal '#furry'
-				nick.should.be.equal 'PakaluPapito'
-				server.expect 'TOPIC #furry' # channel.coffee will auto ask for topic on creation
-				.then done
 			server.expect 'JOIN #furry,#wizard'
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
-		it 'an array of channels with a callback should work for another channel in the array', (done) ->
-			client.join ['#furry', '#wizard'], async(done) (chan, nick) ->
-				chan.should.be.equal '#wizard'
-				nick.should.be.equal 'PakaluPapito'
-				server.expect 'TOPIC #wizard' # channel.coffee will auto ask for topic on creation
-				.then done
+				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #wizard'
+				server.expect [ # channel.coffee will auto ask for topic on creation
+					'TOPIC #furry'
+					'TOPIC #wizard'
+				]
+			.then done
+			.catch done
+
+		it 'an array of channels should resolve the promise', (done) ->
+			joinPromise = client.join ['#furry', '#wizard']
 			server.expect 'JOIN #furry,#wizard'
 			.then ->
+				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #wizard'
+				server.expect [ # channel.coffee will auto ask for topic on creation
+					'TOPIC #furry'
+					'TOPIC #wizard'
+				]
+			.then -> joinPromise
+			.then (e) ->
+				e[0].should.be.equal '#furry'
+				e[1].should.be.equal '#wizard'
+				return
+			.then done
+			.catch done
+
 
 	describe 'invite', ->
 		it 'should send an INVITE', (done) ->
 			client.invite 'HotBabe99', '#gasstation'
 			server.expect 'INVITE HotBabe99 #gasstation'
 			.then done
+			.catch done
 
 	describe 'part', ->
 		it 'a single channel', (done) ->
 			client.part '#furry'
 			server.expect 'PART #furry'
 			.then done
+			.catch done
 
-		it 'a single channel with a reason', (done) ->
+		it 'with a reason', (done) ->
 			client.part '#furry', 'I\'m leaving.'
 			server.expect 'PART #furry :I\'m leaving.'
 			.then done
+			.catch done
 
 		it 'a single channel with a callback', (done) ->
-			client.part '#furry', async(done) (chan, nick) ->
+			client.part '#furry', async(done) (err, chan) ->
+				should.not.exist err
 				chan.should.be.equal '#furry'
-				nick.should.be.equal 'PakaluPapito'
 				done()
 			server.expect 'PART #furry'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry'
-
-		it 'a single channel with a reason and callback', (done) ->
-			client.part '#furry', 'I\'m leaving', async(done) (chan, nick) ->
-				chan.should.be.equal '#furry'
-				nick.should.be.equal 'PakaluPapito'
-				done()
-			server.expect 'PART #furry :I\'m leaving'
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry'
 
@@ -288,25 +337,31 @@ describe 'Client', ->
 			client.part ['#furry', '#wizard', '#jayleno']
 			server.expect 'PART #furry,#wizard,#jayleno'
 			.then done
-
-		it 'an array of channels with a reason', (done) ->
-			client.part ['#furry', '#wizard', '#jayleno'], 'I\'m leaving.'
-			server.expect 'PART #furry,#wizard,#jayleno :I\'m leaving.'
-			.then done
+			.catch done
 
 		it 'an array of channels with a callback should work for one channel in the array', (done) ->
-			client.part ['#furry', '#wizard'], async(done) (chan, nick) ->
-				chan.should.be.equal '#furry'
-				nick.should.be.equal 'PakaluPapito'
+			client.part ['#furry', '#wizard'], async(done) (err, channels) ->
+				should.not.exist err
+				channels[0].should.equal '#furry'
+				channels[1].should.equal '#wizard'
 				done()
 			server.expect 'PART #furry,#wizard'
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry'
-		it 'an array of channels with a callback should work for another channel in the array', (done) ->
-			client.part ['#furry', '#wizard'], async(done) (chan, nick) ->
-				chan.should.be.equal '#wizard'
-				nick.should.be.equal 'PakaluPapito'
-				done()
+				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #wizard'
+		
+		it 'an array of channels should resolve the promise', (done) ->
+			partPromise = client.part ['#furry', '#wizard']
 			server.expect 'PART #furry,#wizard'
 			.then ->
+				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry'
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #wizard'
+				partPromise
+			.then (channels) ->
+				channels[0].should.equal '#furry'
+				channels[1].should.equal '#wizard'
+				return
+			.then done
+			.catch done
+
+		
