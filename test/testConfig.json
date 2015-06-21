@@ -1,5 +1,5 @@
 {
-  "server": "irc.ircnetwork.net",
+  "server": "localhost",
   "port": 6667,
   "nick": "NodeIRCTestBot",
   "username": "NodeIRCTestBot",

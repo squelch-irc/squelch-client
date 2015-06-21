@@ -14,18 +14,17 @@ defaultOpt =
 	realname: "NodeIRCClient"
 	verbose: false
 	channels: []
-	users: []
 	autoNickChange: true
-	autoRejoin: false
+	autoRejoin: false # TODO: write test for this
 	autoConnect: true
-	autoSplitMessage: true
+	autoSplitMessage: true # TODO: write test for this
 	messageDelay: 1000
-	stripColors: true
-	stripStyles: true
-	autoReconnect: true
+	stripColors: true # TODO: write test for this
+	stripStyles: true # TODO: write test for this
+	autoReconnect: true # TODO: write test for this
 	autoReconnectTries: 3
 	reconnectDelay: 5000
-	ssl: false
+	ssl: false # TODO: write test for this
 	selfSigned: false
 	certificateExpired: false
 	timeout: 120000
@@ -192,18 +191,19 @@ class Client extends EventEmitter2
 					cb(nick)
 			@log "Connected"
 			@conn.on "data", (data) =>
-				for line in data.toString().split "\r\n"
-					@handleReply line
+				
 				clearTimeout @_.timeout if @_.timeout
 				@_.timeout = setTimeout =>
 					@raw "PING :ruthere"
 					pingTime = new Date().getTime()
 					@_.timeout = setTimeout =>
-						seconds = #{(new Date().getTime() - pingTime) / 1000}
+						seconds = (new Date().getTime() - pingTime) / 1000
 						@emit 'timeout', seconds
 						@handleReply "ERROR :Ping Timeout(#{seconds} seconds)"
 					, @opt.timeout
 				, @opt.timeout
+				for line in data.toString().split "\r\n"
+					@handleReply line
 			# @conn.on "close", =>
 			# 	@log "closing"
 			@conn.on "error", =>
@@ -262,7 +262,18 @@ class Client extends EventEmitter2
 			@once "disconnect", ->
 				cb()
 
-
+	###
+	@overload #forceQuit()
+	  Immediately disconnects from the server without waiting for the server to acknowledge the QUIT request.
+	@overload #forceQuit(reason)
+	  Immediately disconnects from the server with a reason without waiting for the server to acknowledge the QUIT request.
+	  @param reason [String] The quit reason.
+	###
+	forceQuit: (reason) ->
+		# TODO: write test for this
+		@raw "QUIT" + (if reason? then " :#{reason}" else ""), false
+		@_.disconnecting = true
+		@handleReply "ERROR :Force Quit"
 
 	###
 	Sends a raw message to the server. Automatically appends "\r\n".
@@ -270,6 +281,10 @@ class Client extends EventEmitter2
 	@param delay [Boolean] If false, the message skips the message queue and is sent right away. Defaults to true.
 	###
 	raw: (msg, delay = true) ->
+		if not msg?
+			throw new Error()
+		if not @conn?
+			return
 		if not delay or @opt.messageDelay is 0
 			@log "-> #{msg}"
 			@conn.write msg + "\r\n"
@@ -283,9 +298,10 @@ class Client extends EventEmitter2
 	###
 	dequeue: () =>
 		msg = @_.messageQueue.shift()
-		@log "-> #{msg}"
-		@conn.write msg + "\r\n"
-		setTimeout @dequeue, @opt.messageDelay if @_.messageQueue.length isnt 0
+		if @conn?
+			@log "-> #{msg}"
+			@conn.write msg + "\r\n"
+		@_.messageQueueTimeout = setTimeout @dequeue, @opt.messageDelay if @_.messageQueue.length isnt 0
 
 	###
 	@nodoc
@@ -321,7 +337,7 @@ class Client extends EventEmitter2
 	###
 	action: (target, msg) ->
 		if @opt.autoSplitMessage
-			@raw "\x01ACTION #{line}\x01" for line in @splitText "\x01ACTION\x01", msg
+			@msg target, "\x01ACTION #{line}\x01" for line in @splitText "\x01ACTION\x01", msg
 		else
 			@msg target, "\x01ACTION #{msg}\x01"
 
@@ -386,7 +402,9 @@ class Client extends EventEmitter2
 	  @param cb [Function] A callback that's called on successful join
 	###
 	join: (chan, cb) ->
-		if chan instanceof Array and chan.length > 0
+		if chan instanceof Array
+			if chan.length is 0
+				return
 			@raw "JOIN #{chan.join()}"
 			if cb instanceof Function
 				for c in chan
@@ -426,8 +444,9 @@ class Client extends EventEmitter2
 	  @param cb [Function] A callback that's called on successful part
 	###
 	part: (chan, reason, cb) ->
-		reason = "" if not reason?
-		if reason instanceof Function
+		if not reason?
+			reason = ""
+		else if reason instanceof Function
 			cb = reason
 			reason = ""
 		else
@@ -493,9 +512,13 @@ class Client extends EventEmitter2
 		@mode chan, "-b #{hostmask}"
 
 	###
-	Sets a given mode on a hostmask in a channel.
-	@param chan [String] The channel to set the mode in
-	@param modeStr [String] The modes and arguments to set for that channel
+	@overload #mode(chan, modeStr)
+		Sets a given mode on a hostmask in a channel.
+		@param chan [String] The channel to set the mode in
+		@param modeStr [String] The modes and arguments to set for that channel
+	@overload #mode(chan)
+		Returns the mode of a channel.
+		@param chan [String] The channel to get the mode of
 	###
 	mode: (chan, modeStr) ->
 		return getChannel(chan).mode() if not modeStr?
@@ -696,6 +719,7 @@ class Client extends EventEmitter2
 					if oldnick is @nick()
 						@_.nick = newnick
 					@emit "nick", oldnick, newnick
+					# TODO: update channel user info?
 				when "PRIVMSG"
 					from = getSender parsedReply
 					to = parsedReply.params[0]
@@ -784,18 +808,21 @@ class Client extends EventEmitter2
 				when "ERROR"
 					@conn.destroy()
 					@_.channels = {}
+					@_.messageQueue = []
+					clearTimeout @_.messageQueueTimeout
+					clearTimeout @_.timeout
 					@conn = null
 					@_.connected = false
 					@emit "error", parsedReply.params[0] if not @_.disconnecting
-					@emit "disconnect"
 					@_.disconnecting = false
+					@emit "disconnect"
 					@log "Disconnected from server"
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
 						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
 						setTimeout =>
 							@connect @opt.autoReconnectTries
 						, @opt.reconnectDelay
-				when getReplyCode("RPL_WELCOME") # RPL_WELCOME
+				when getReplyCode("RPL_WELCOME")
 					@_.connected = true
 					@_.nick = parsedReply.params[0]
 					@emit "connect", @_.nick
@@ -830,13 +857,14 @@ class Client extends EventEmitter2
 								
 				when getReplyCode("RPL_NOTOPIC")
 					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ""
-				when getReplyCode("RPL_TOPIC")
+				when getReplyCode("RPL_TOPIC") # TODO: write test for this
 					@_.channels[parsedReply.params[1].toLowerCase()]._.topic = parsedReply.params[2]
 				when getReplyCode("RPL_TOPIC_WHO_TIME")
 					chan = @_.channels[parsedReply.params[1].toLowerCase()]
 					chan._.topicSetter = parsedReply.params[2]
 					chan._.topicTime = new Date parseInt(parsedReply.params[3])
-				when getReplyCode("RPL_NAMREPLY")
+				when getReplyCode("RPL_NAMREPLY") # TODO: write test for this
+					# TODO: trigger event on name update
 					chan = @_.channels[parsedReply.params[2].toLowerCase()]
 					names = parsedReply.params[3].split " "
 					for name in names
