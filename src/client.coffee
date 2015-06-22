@@ -90,6 +90,8 @@ Client extends EventEmitter2, so you can use the typical on or once functions wi
 	When the mode is removed from a user. The mode parameter will only be a single mode. The setter can be a nick or the server.
  - **timeout**: *(seconds)*</br>
 	When the client times out, this event will be triggered right before disconnecting.
+ - **names**: *(chan)*</br>
+ 	When the client finishes receiving the list of names for a channel. Chan will be '*' if you sent the NAMES command without any channel parameter, as per the RFC. You may access the updated names by getting the channel object from getChannel(chan).
 ###
 class Client extends EventEmitter2
 	###
@@ -900,12 +902,16 @@ class Client extends EventEmitter2
 			when getReplyCode('RPL_NAMREPLY')
 				# TODO: trigger event on name update
 				chan = @_.channels[parsedReply.params[2].toLowerCase()]
+				break if not chan?
 				names = parsedReply.params[3].split ' '
 				for name in names
 					if @_.reversePrefix[name[0]]?
 						chan._.users[name[1..]] = name[0]
 					else
 						chan._.users[name] = ''
+			when getReplyCode('RPL_ENDOFNAMES')
+				chan = parsedReply.params[1]
+				@emit 'names', chan
 			when getReplyCode('RPL_MOTD')
 				@_.MOTD += parsedReply.params[1] + '\r\n'
 			when getReplyCode('RPL_MOTDSTART')
