@@ -117,10 +117,27 @@ describe 'Client', ->
 				client.isConnected().should.be.false
 				done()
 
+	describe 'forceQuit', ->
+		it 'should send a QUIT and immediately close the connection', (done) ->
+			client.forceQuit()
+			server.expect 'QUIT'
+			.then ->
+				client.isConnected().should.be.false
+				should.not.exist client.conn
+				done()
+
+		it 'should send a QUIT with a reason and immediately close the connection', (done) ->
+			client.forceQuit('screw this')
+			server.expect 'QUIT :screw this'
+			.then ->
+				client.isConnected().should.be.false
+				should.not.exist client.conn
+				done()
+
 	describe 'isConnected', ->
 		beforeEach (done) ->
 			cleanUp client, server, done
-		it.only 'should only be true when connected to the server', (done) ->
+		it 'should only be true when connected to the server', (done) ->
 
 			server = new TestServer 6667
 			client = new Client

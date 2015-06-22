@@ -303,7 +303,6 @@ class Client extends EventEmitter2
 	  @param reason [String] The quit reason.
 	###
 	forceQuit: (reason) ->
-		# TODO: write test for this
 		@raw 'QUIT' + (if reason? then " :#{reason}" else ''), false
 		@_.disconnecting = true
 		@handleReply ircMsg.parse 'ERROR :Force Quit'
@@ -836,7 +835,7 @@ class Client extends EventEmitter2
 			when 'PING'
 				@raw "PONG :#{parsedReply.params[0]}", false
 			when 'ERROR'
-				@conn.destroy()
+				@conn.end()
 				@_.channels = {}
 				@_.messageQueue = []
 				clearTimeout @_.messageQueueTimeout
