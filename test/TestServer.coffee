@@ -4,6 +4,8 @@ should = chai.should()
 
 net = require 'net'
 tls = require 'tls'
+fs = require 'fs'
+path = require 'path'
 Promise = require 'bluebird'
 EventEmitter2 = require('eventemitter2').EventEmitter2
 
@@ -35,9 +37,16 @@ class TestServer extends EventEmitter2
 						expected.deferred.resolve()
 					else
 						expected.deferred.reject {expected: expected.line, actual: actual}
+			@socket.on 'error', (err) =>
+				return if @clientQuitting && err.code is 'ECONNRESET'
+				throw err
+
 		if ssl
-			# TODO: do this with cert and key
-			throw new Error 'NOT YET IMPLEMENTED'
+			opts =
+				key: fs.readFileSync path.resolve __dirname, 'creds/key.pem'
+				cert: fs.readFileSync path.resolve __dirname, 'creds/cert.pem'
+			@server = tls.createServer opts, socketListener
+				.listen(port)
 		else
 			@server = net.createServer socketListener
 				.listen(port)
@@ -70,5 +79,8 @@ class TestServer extends EventEmitter2
 
 	verbose: (enabled) =>
 		@isVerbose = enabled
+
+	clientQuitting: =>
+		@clientQuitting = true
 
 module.exports = TestServer

@@ -19,6 +19,7 @@ async = (done) ->
 
 cleanUp = (client, server, done) ->
 	if client.isConnected()
+		server.clientQuitting() # warn server to ignore ECONNREST errors
 		client.forceQuit()
 		server.expect 'QUIT'
 	server.close()
@@ -32,7 +33,7 @@ multiDone = (num, done) ->
 describe 'Client', ->
 	client = server = null
 	beforeEach (done) ->
-		server = new TestServer 6667
+		server = new TestServer 6667, false
 		client = new Client
 			server: 'localhost'
 			nick: 'PakaluPapito'
@@ -40,6 +41,7 @@ describe 'Client', ->
 			autoReconnect: false
 			autoConnect: false
 			verbose: false
+			port: 6667
 		connectPromise = client.connect()
 		server.expect [
 			'NICK PakaluPapito'
@@ -77,8 +79,6 @@ describe 'Client', ->
 			client.opt.username.should.equal 'NodeIRCTestBot'
 			client.opt.realname.should.equal 'I do the tests.'
 			client.opt.autoConnect.should.equal false
-
-	# TODO: secure server connect
 
 	describe 'disconnect', ->
 		it 'should send QUIT to the server and null the connection', (done) ->
@@ -153,6 +153,18 @@ describe 'Client', ->
 			client.verbose false
 			client.verbose().should.be.false
 			client.opt.verbose.should.be.false
+
+	describe 'verboseError', ->
+		it 'should return the right value', ->
+			client.verboseError().should.be.true
+			client.opt.verboseError.should.be.true
+		it 'should set the right value', ->
+			client.verboseError true
+			client.verboseError().should.be.true
+			client.opt.verboseError.should.be.true
+			client.verboseError false
+			client.verboseError().should.be.false
+			client.opt.verboseError.should.be.false
 
 	describe 'autoRejoin', ->
 		it 'should send a join command after a KICK', (done) ->
@@ -413,5 +425,48 @@ describe 'Client', ->
 				return
 			.then done
 			.catch done
+	describe 'ssl', ->
+		beforeEach (done) ->
+			cleanUp client, server, done
 
-		
+		it 'should successfully connect', (done) ->
+			server = new TestServer 6697, true
+			client = new Client
+				server: 'localhost'
+				nick: 'PakaluPapito'
+				messageDelay: 0
+				autoReconnect: false
+				autoConnect: false
+				ssl: true
+				selfSigned: true
+				port: 6697
+			connectPromise = client.connect()
+			server.expect [
+				'NICK PakaluPapito'
+				'USER NodeIRCClient 8 * :NodeIRCClient'
+			]
+			.then ->
+				server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
+				connectPromise
+			.then (nick) ->
+				nick.should.equal 'PakaluPapito'
+				done()
+
+		it 'should throw an error for self signed certificates', (done) ->
+			server = new TestServer 6697, true
+			client = new Client
+				server: 'localhost'
+				nick: 'PakaluPapito'
+				messageDelay: 0
+				autoReconnect: false
+				autoConnect: false
+				verbose: false
+				verboseError: false
+				ssl: true
+				selfSigned: false
+				port: 6697
+			client.connect()
+			.catch (err) ->
+				err.should.exist
+				err.code.should.equal 'DEPTH_ZERO_SELF_SIGNED_CERT'
+				done()

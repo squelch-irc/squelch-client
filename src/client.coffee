@@ -6,7 +6,6 @@ ircMsg = require 'irc-message'
 Promise = require 'bluebird'
 streamMap = require 'through2-map'
 color = require 'irc-colors'
-cbNoop = (err) -> throw err if err
 
 Channel = require './channel'
 {getReplyCode, getReplyName} = require './replies'
@@ -17,18 +16,19 @@ defaultOpt =
 	username: "NodeIRCClient"
 	realname: "NodeIRCClient"
 	verbose: false
+	verboseError: true
 	channels: []
 	autoNickChange: true
 	autoRejoin: false
 	autoConnect: true
 	autoSplitMessage: true
 	messageDelay: 1000
-	stripColors: true # TODO: write test for this
-	stripStyles: true # TODO: write test for this
-	autoReconnect: true # TODO: write test for this
+	stripColors: true
+	stripStyles: true
+	autoReconnect: true
 	autoReconnectTries: 3
 	reconnectDelay: 5000
-	ssl: false # TODO: write test for this
+	ssl: false
 	selfSigned: false
 	certificateExpired: false
 	timeout: 120000
@@ -100,7 +100,8 @@ class Client extends EventEmitter2
 	@option opt [String] username The username to connect with. Default: NodeIRCClient
 	@option opt [String] realname The real name to connect with. Default: NodeIRCClient
 	@option opt [Array] channels The channels to autoconnect to on connect. Default: []
-	@option opt [Boolean] verbose Whether this should output log messages to console or not. Default: true
+	@option opt [Boolean] verbose Whether this should output log messages to console or not. Default: false
+	@option opt [Boolean] verboseError Whether this should output error messages to console or not. Default: true
 	@option opt [Boolean] autoNickChange Whether this should try alternate nicks if the given one is taken, or give up and quit. Default: true
 	@option opt [Boolean] autoRejoin Whether this should automatically rejoin channels it was kicked from. Default: false
 	@option opt [Boolean] autoConnect Whether this should automatically connect after being created or not. Default: true
@@ -108,9 +109,9 @@ class Client extends EventEmitter2
 	@option opt [Integer] messageDelay How long to throttle between outgoing messages. Default: 1000
 	@option opt [Boolean] stripColors Strips colors from incoming messages before processing. Default: true
 	@option opt [Boolean] stripStyles Strips styles from incoming messages before processing, like bold and underline. Default: true
-	@option opt [Integer] reconnectDelay Time in milliseconds to wait before trying to reconnect.
-	@option opt [Boolean] autoReconnect Whether this should automatically attempt to reconnect on disconnecting from the server by error. If you explicitly call disconnect(), the client will not attempt to reconnect. This does NOT apply to the connect() retries.
-	@option opt [Integer] autoReconnectTries The number of attempts to reconnect if autoReconnect is enabled. If this is -1, then the client will try infinitely many times. This does NOT apply to the connect() retries.
+	@option opt [Integer] reconnectDelay Time in milliseconds to wait before trying to reconnect. Default: 5000
+	@option opt [Boolean] autoReconnect Whether this should automatically attempt to reconnect on disconnecting from the server by error. If you explicitly call disconnect(), the client will not attempt to reconnect. This does NOT apply to the connect() retries. Default: true
+	@option opt [Integer] autoReconnectTries The number of attempts to reconnect if autoReconnect is enabled. If this is -1, then the client will try infinitely many times. This does NOT apply to the connect() retries. Default: 3
 	@option opt [Boolean/Object] ssl Whether to use ssl to connect to the server. If ssl is an object, then it is used as the options for ssl connections (See tls.connect in 'tls' node module). Default: false
 	@option opt [Boolean] selfSigned Whether to accept self signed ssl certificates or not. Default: false
 	@option opt [Boolean] certificateExpired Whether to accept expired certificates or not. Default: false
@@ -157,6 +158,22 @@ class Client extends EventEmitter2
 	log: (msg) -> console.log msg if @opt.verbose
 
 	###
+	Logs to standard error if verbose is enabled.
+	@nodoc
+	@param msg [String] String to log
+	###
+	logError: (msg) -> console.error msg if @opt.verboseError
+
+	###
+	Default callback when callback isn't specified to a function.
+	By default it will log the error to console if this bot is
+	@nodoc
+	@param err [Error] The Error that this callback receives.
+	###
+	cbNoop: (err) => @logError err if err
+
+
+	###
 	@overload #connect()
 	  Connects to the server.
 	  @return [Promise<String,Error>] A promise that is resolves with the nick on successful disconnect, and rejects with an Error on connection error.
@@ -183,10 +200,10 @@ class Client extends EventEmitter2
 			tries--
 
 			errorListener = (err) =>
-				console.error 'Unable to connect.'
-				console.error err
+				@logError 'Unable to connect.'
+				@logError err
 				if tries > 0 or tries is -1
-					console.error "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
+					@logError "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
 					setTimeout =>
 						@connect tries, cb
 					, @opt.reconnectDelay
@@ -217,7 +234,7 @@ class Client extends EventEmitter2
 					, @opt.timeout
 					@handleReply data
 				@conn.on 'error', (e) =>
-					console.error 'Disconnected by network error.'
+					@logError 'Disconnected by network error.'
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
 						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
 						setTimeout =>
@@ -243,11 +260,8 @@ class Client extends EventEmitter2
 					onConnect()
 			else
 				@conn = net.connect @opt.port, @opt.server, onConnect
-
-			
-
 			@conn.once 'error', errorListener
-		.nodeify cb or cbNoop
+		.nodeify cb or @cbNoop
 
 	###
 	@overload #disconnect()
@@ -279,7 +293,7 @@ class Client extends EventEmitter2
 				@raw 'QUIT', false
 			@once 'disconnect', ->
 				resolve()
-		.nodeify cb or cbNoop
+		.nodeify cb or @cbNoop
 
 	###
 	@overload #forceQuit()
@@ -410,7 +424,7 @@ class Client extends EventEmitter2
 			@on 'raw', errListener
 
 			@raw "NICK #{desiredNick}"
-		.nodeify cb or cbNoop
+		.nodeify cb or @cbNoop
 
 	###
 	@overload #join(chan)
@@ -436,14 +450,14 @@ class Client extends EventEmitter2
 					new Promise (resolve) =>
 						@once ['join', c], (channel, nick) ->
 							resolve channel
-			return Promise.all(joinPromises).nodeify cb or cbNoop
+			return Promise.all(joinPromises).nodeify cb or @cbNoop
 
 		else
 			return new Promise (resolve) =>
 				@raw "JOIN #{chan}"
 				@once ['join', chan], (channel, nick) ->
 					resolve channel
-			.nodeify cb or cbNoop
+			.nodeify cb or @cbNoop
 
 	###
 	@overload #part(chan)
@@ -487,14 +501,14 @@ class Client extends EventEmitter2
 					new Promise (resolve) =>
 						@once ['part', c], (channel, nick) ->
 							resolve channel
-			return Promise.all(partPromises).nodeify cb or cbNoop
+			return Promise.all(partPromises).nodeify cb or @cbNoop
 
 		else
 			return new Promise (resolve) =>
 				@raw "PART #{chan+reason}"
 				@once ['part', chan], (channel, nick) ->
 					resolve channel
-			.nodeify cb or cbNoop
+			.nodeify cb or @cbNoop
 
 	###
 	Returns if this client is connected.
@@ -609,6 +623,18 @@ class Client extends EventEmitter2
 	verbose: (enabled) ->
 		return @opt.verbose if not enabled?
 		@opt.verbose = enabled
+
+	###
+	@overload #verboseError()
+	  Getter for 'verboseError' in options.
+	  @return [Boolean] the value of verboseError
+	@overload #verboseError(enabled)
+	  Setter for 'verboseError'
+	  @param enabled [Boolean] The value of verboseError to set
+	###
+	verboseError: (enabled) ->
+		return @opt.verboseError if not enabled?
+		@opt.verboseError = enabled
 
 	###
 	@overload #messageDelay()
