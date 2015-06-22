@@ -1,19 +1,19 @@
-# node-irc-client
+# squelch-client
 
 
-An IRC Client for Node.js written in CoffeeScript.
+An IRC Client for Node.js written in CoffeeScript, used in the Squelch IRC client.
 
 ## Documentation
-You can find the full documentation [here](http://rahatarmanahmed.github.io/node-irc-client/).
+You can find the full documentation [here](http://squelch-irc.github.io/squelch-client/).
 
 
 ## Installation
-`npm install node-irc-client`
+`npm install squelch-client`
 
 ## Example usage
 There will be more extensive examples soon. For now, here is a simple IRC echo bot in CoffeeScript.
 ```coffeescript
-Client = require 'node-irc-client'
+Client = require 'squelch-client'
 
 client = new Client
 	server: "irc.esper.net"

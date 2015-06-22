@@ -52,7 +52,7 @@ module.exports = (grunt) ->
 
         codo:
             options:
-                title: 'node-irc-client'
+                title: 'squelch-client'
                 output: 'docs/'
                 inputs: ['src/']
         'gh-pages':
