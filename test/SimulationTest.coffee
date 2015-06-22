@@ -312,6 +312,8 @@ describe 'handleReply simulations', ->
 			client.once 'nick', async(done) (oldnick, newnick) ->
 				oldnick.should.equal 'KR'
 				newnick.should.equal 'RK'
+				client.getChannel('#sexy')._.users['RK'].should.equal '@'
+				should.not.exist client.getChannel('#sexy')._.users['KR']
 				done()
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com NICK :RK'
 

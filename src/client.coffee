@@ -749,8 +749,11 @@ class Client extends EventEmitter2
 				newnick = parsedReply.params[0]
 				if oldnick is @nick()
 					@_.nick = newnick
+				for name, chan of @_.channels
+					for user, status of chan._.users when user is oldnick
+						chan._.users[newnick] = chan._.users[oldnick]
+						delete chan._.users[oldnick]
 				@emit 'nick', oldnick, newnick
-				# TODO: update channel user info?
 			when 'PRIVMSG'
 				from = getSender parsedReply
 				to = parsedReply.params[0]
