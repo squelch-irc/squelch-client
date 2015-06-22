@@ -120,8 +120,9 @@ describe 'Client', ->
 	describe 'isConnected', ->
 		beforeEach (done) ->
 			cleanUp client, server, done
-		it 'should only be true when connected to the server', ->
+		it.only 'should only be true when connected to the server', (done) ->
 
+			server = new TestServer 6667
 			client = new Client
 				server: 'localhost'
 				nick: 'PakaluPapito'
@@ -130,17 +131,16 @@ describe 'Client', ->
 				autoConnect: false
 				verbose: false
 			client.isConnected().should.be.false
-
-			server = new TestServer 6667
+			client.connect()
 			server.expect [
 				'NICK PakaluPapito'
 				'USER NodeIRCClient 8 * :NodeIRCClient'
 			]
 			.then ->
-				server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
 				client.on 'connect', ->
 					client.isConnected().should.be.true
 					done()
+				server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
 
 	describe 'verbose', ->
 		it 'should return the right value', ->
