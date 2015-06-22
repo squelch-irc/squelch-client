@@ -842,7 +842,7 @@ class Client extends EventEmitter2
 			when 'PING'
 				@raw "PONG :#{parsedReply.params[0]}", false
 			when 'ERROR'
-				@conn.end()
+				@conn.destroy()
 				@_.channels = {}
 				@_.messageQueue = []
 				clearTimeout @_.messageQueueTimeout
