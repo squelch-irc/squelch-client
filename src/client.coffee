@@ -568,7 +568,7 @@ class Client extends EventEmitter2
 		@param chan [String] The channel to get the mode of
 	###
 	mode: (chan, modeStr) ->
-		return getChannel(chan).mode() if not modeStr?
+		return @_.channels[chan.toLowerCase()].mode() if not modeStr?
 		@raw "MODE #{chan} #{modeStr}"
 
 	###
@@ -678,7 +678,7 @@ class Client extends EventEmitter2
 	@return [Array] The array of all channels the client is in.
 	###
 	channels: () ->
-		return @_.channels.slice(0) # shallow copy
+		return getChannel(chan) for chan in @_.channels
 
 	###
 	Gets the Channel object if the bot is in that channel.
@@ -686,7 +686,8 @@ class Client extends EventEmitter2
 	@return [Boolean] The Channel object, or undefined if the bot is not in that channel.
 	###
 	getChannel: (name) ->
-		return @_.channels[name.toLowerCase()]
+		chan = @_.channels[name.toLowerCase()]
+		return chan?.clone()
 
 	###
 	Checks if the client is in the channel.
@@ -719,6 +720,7 @@ class Client extends EventEmitter2
 				chan = parsedReply.params[0]
 				if nick is @nick()
 					@_.channels[chan.toLowerCase()] = new Channel @, chan
+					@raw "TOPIC #{chan}" # request topic so we have it
 				else
 					@_.channels[chan.toLowerCase()]._.users[nick] = ''
 				@emit 'join', chan, nick
@@ -804,9 +806,9 @@ class Client extends EventEmitter2
 						@_.prefix[c]?
 							param = params.shift()
 						if @_.prefix[c]? # Update user's mode in channel
-							@getChannel(chan)._.users[param] = if adding then @_.prefix[c] else ''
+							@_.channels[chan.toLowerCase()]._.users[param] = if adding then @_.prefix[c] else ''
 						else # Update channel mode
-							channelModes = @getChannel(chan)._.mode
+							channelModes = @_.channels[chan.toLowerCase()]._.mode
 							if adding
 								channelModes.push c
 							if not adding
@@ -886,13 +888,13 @@ class Client extends EventEmitter2
 							
 			when getReplyCode('RPL_NOTOPIC')
 				@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ''
-			when getReplyCode('RPL_TOPIC') # TODO: write test for this
+			when getReplyCode('RPL_TOPIC')
 				@_.channels[parsedReply.params[1].toLowerCase()]._.topic = parsedReply.params[2]
 			when getReplyCode('RPL_TOPIC_WHO_TIME')
 				chan = @_.channels[parsedReply.params[1].toLowerCase()]
 				chan._.topicSetter = parsedReply.params[2]
 				chan._.topicTime = new Date parseInt(parsedReply.params[3])
-			when getReplyCode('RPL_NAMREPLY') # TODO: write test for this
+			when getReplyCode('RPL_NAMREPLY')
 				# TODO: trigger event on name update
 				chan = @_.channels[parsedReply.params[2].toLowerCase()]
 				names = parsedReply.params[3].split ' '

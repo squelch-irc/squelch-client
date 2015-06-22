@@ -101,25 +101,34 @@ describe 'handleReply simulations', ->
 		client.isChannel('&burp').should.be.false
 
 	describe 'channel objects', ->
-		it 'should have created one for #sexy and #Furry', (done) ->
-			client._.channels['#sexy'].should.exist
-			client._.channels['#sexy'].name().should.equal '#sexy'
-			client._.channels['#sexy'].topic().should.equal 'Welcome to the #sexy!'
-			client._.channels['#sexy'].topicSetter().should.equal 'KR!~KR@78-72-225-13-no193.business.telia.com'
-			client._.channels['#sexy'].topicTime().getTime().should.equal 1394457068
-			client._.channels['#sexy']._.users['KR'].should.equal '@'
-			client._.channels['#sexy']._.users['Kurea'].should.equal '+'
-			client._.channels['#sexy']._.users['Chase'].should.equal ''
-			should.not.exist client._.channels['#sexy']._.users['Bud']
+		it 'should have created one for #sexy and #Furry', ->
+			testSexy = (chan) ->
+				chan.should.exist
+				chan.name().should.equal '#sexy'
+				chan.topic().should.equal 'Welcome to the #sexy!'
+				chan.topicSetter().should.equal 'KR!~KR@78-72-225-13-no193.business.telia.com'
+				chan.topicTime().getTime().should.equal 1394457068
+				chan._.users['KR'].should.equal '@'
+				chan._.users['Kurea'].should.equal '+'
+				chan._.users['Chase'].should.equal ''
+				should.not.exist chan._.users['Bud']
+			testFurry = (chan) ->
+				chan.should.exist
+				chan.should.exist
+				chan.name().should.equal '#Furry'
+				chan.topic().should.equal 'Welcome to the #Furry! We have furries.'
+				chan.topicSetter().should.equal 'NotKR!~NotKR@78-72-225-13-no193.business.telia.com'
+				chan.topicTime().getTime().should.equal 1394457070
 
-			client._.channels['#furry'].should.exist
-			client._.channels['#furry'].should.exist
-			client._.channels['#furry'].name().should.equal '#Furry'
-			client._.channels['#furry'].topic().should.equal 'Welcome to the #Furry! We have furries.'
-			client._.channels['#furry'].topicSetter().should.equal 'NotKR!~NotKR@78-72-225-13-no193.business.telia.com'
-			client._.channels['#furry'].topicTime().getTime().should.equal 1394457070
-			done()
-				# eh good enough
+			testSexy client._.channels['#sexy']
+			testSexy client.getChannel '#sexy'
+			testFurry client._.channels['#furry']
+			testFurry client.getChannel '#furry'
+
+		it 'created from getChannel should not equal their originals', ->
+			client.getChannel('#sexy').should.not.equal client._.channels['#sexy']
+			client.getChannel('#sexy')._.users.should.not.equal client._.channels['#sexy']._.users
+			client.getChannel('#sexy')._.mode.should.not.equal client._.channels['#sexy']._.mode
 
 	it 'should know the nick prefixes and chanmodes', ->
 		client._.prefix.o.should.equal '@'

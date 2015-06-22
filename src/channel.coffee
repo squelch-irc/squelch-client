@@ -1,3 +1,5 @@
+cloneDeep = require 'lodash.clonedeep'
+
 ###
 An object containing some information about an IRC channel.
 NOTE: Do not modify the contents of the private _ object.
@@ -16,7 +18,16 @@ class Channel
 			topicTime: null
 			users: {}
 			mode: []
-		@_.client.raw "TOPIC #{@_.name}"
+
+	###
+	Clones this Channel object
+	@nodoc
+	@return [Channel] A deep copy of this Channel object
+	###
+	clone: ->
+		copy = new Channel @, @_.name
+		copy._ = cloneDeep @._
+		return copy
 
 	###
 	Returns the name of this channel.
