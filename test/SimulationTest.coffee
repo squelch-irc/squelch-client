@@ -60,12 +60,12 @@ describe 'handleReply simulations', ->
 				':availo.esper.net 332 PakaluPapito #sexy :Welcome to the #sexy!'
 				':availo.esper.net 333 PakaluPapito #sexy KR!~KR@78-72-225-13-no193.business.telia.com 1394457068'
 				':availo.esper.net 353 PakaluPapito * #sexy :PakaluPapito @KR Freek +Kurea Chase ^Freek'
-				':availo.esper.net 366 PakaluPapito #kellyirc :End of /NAMES list.'
+				':availo.esper.net 366 PakaluPapito #sexy :End of /NAMES list.'
 				':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #Furry'
 				':availo.esper.net 332 PakaluPapito #Furry :Welcome to the #Furry! We have furries.'
 				':availo.esper.net 333 PakaluPapito #Furry NotKR!~NotKR@78-72-225-13-no193.business.telia.com 1394457070'
 				':availo.esper.net 353 PakaluPapito * #Furry :PakaluPapito @abcdeFurry +Bud'
-				':availo.esper.net 366 PakaluPapito #kellyirc :End of /NAMES list.'
+				':availo.esper.net 366 PakaluPapito #Furry :End of /NAMES list.'
 				'PING :finished'
 			]
 			server.expect [
@@ -418,6 +418,17 @@ describe 'handleReply simulations', ->
 				chan.should.equal '#dust'
 				done()
 			server.reply ':Angel!wings@irc.org INVITE PakaluPapito #dust'
+
+	describe 'names', ->
+		it 'should emit an names event', (done) ->
+			client.once 'names', async(done) (chan) ->
+				chan.should.equal '#sexy'
+				done()
+			server.reply [
+				':availo.esper.net 353 PakaluPapito * #sexy :PakaluPapito @KR Freek +Kurea Chase ^Freek'
+				':availo.esper.net 366 PakaluPapito #sexy :End of /NAMES list.'
+			]
+
 	describe 'mode', ->
 		it 'should emit a +mode event for +n (type D mode)', (done) ->
 			client.once '+mode', async(done) (chan, sender, mode, param) ->
