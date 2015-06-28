@@ -1,8 +1,5 @@
 module.exports =
-	###
-	@nodoc
-	Helper method to get nick or server out of the prefix of a message
-	###
+	# Helper method to get nick or server out of the prefix of a message
 	getSender: (parsedReply) ->
 		if parsedReply.prefix.isServer
 			return parsedReply.prefix.host

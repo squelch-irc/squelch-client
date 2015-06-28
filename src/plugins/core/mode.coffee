@@ -1,61 +1,24 @@
 {getSender} = require '../../util'
 module.exports = ->
 	return (client) ->
-
-		###
-		Sets mode +b on a hostmask in a channel.
-		@param chan [String] The channel to set the mode in
-		@param hostmask [String] The hostmask to ban
-		###
+		client.mode = (chan, modeStr) ->
+			@raw "MODE #{chan} #{modeStr}"
+		
 		client.ban = (chan, hostmask) ->
 			@mode chan, "+b #{hostmask}"
 
-		###
-		Sets mode -b on a hostmask in a channel.
-		@param chan [String] The channel to set the mode in
-		@param hostmask [String] The hostmask to unban
-		###
 		client.unban = (chan, hostmask) ->
 			@mode chan, "-b #{hostmask}"
 
-		###
-		@overload #mode(chan, modeStr)
-			Sets a given mode on a hostmask in a channel.
-			@param chan [String] The channel to set the mode in
-			@param modeStr [String] The modes and arguments to set for that channel
-		###
-		client.mode = (chan, modeStr) ->
-			@raw "MODE #{chan} #{modeStr}"
-
-		###
-		Sets mode +o on a user in a channel.
-		@param chan [String] The channel to set the mode in
-		@param user [String] The user to op
-		###
 		client.op = (chan, user) ->
 			@mode chan, "+o #{user}"
 
-		###
-		Sets mode -o on a user in a channel.
-		@param chan [String] The channel to set the mode in
-		@param user [String] The user to deop
-		###
 		client.deop = (chan, user) ->
 			@mode chan, "-o #{user}"
 
-		###
-		Sets mode +v on a user in a channel.
-		@param chan [String] The channel to set the mode in
-		@param user [String] The user to voice
-		###
 		client.voice = (chan, user) ->
 			@mode chan, "+v #{user}"
 
-		###
-		Sets mode -v on a user in a channel.
-		@param chan [String] The channel to set the mode in
-		@param user [String] The user to devoice
-		###
 		client.devoice = (chan, user) ->
 			@mode chan, "-v #{user}"
 

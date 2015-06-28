@@ -3,8 +3,6 @@ module.exports = (grunt) ->
     grunt.task.loadNpmTasks 'grunt-mocha-test'
     grunt.task.loadNpmTasks 'grunt-contrib-coffee'
     grunt.task.loadNpmTasks 'grunt-coffeelint'
-    grunt.task.loadNpmTasks 'grunt-codo'
-    grunt.task.loadNpmTasks 'grunt-gh-pages'
 
     grunt.initConfig
         pkg: 
@@ -13,8 +11,9 @@ module.exports = (grunt) ->
         coffee:
             dist:
                 expand: true
-                flatten: true
-                src: ['src/**/*.coffee']
+                flatten: false
+                cwd: 'src'
+                src: ['**/*.coffee']
                 dest: 'dist/'
                 ext: '.js'
 
@@ -50,22 +49,10 @@ module.exports = (grunt) ->
                 src:
                     'test/*.coffee'
 
-        codo:
-            options:
-                title: 'squelch-client'
-                output: 'docs/'
-                inputs: ['src/']
-        'gh-pages':
-            options:
-                base: 'docs'
-            src: ['**']
-
     grunt.event.on 'coffee.error', (msg) ->
         grunt.log.write msg
 
-    grunt.registerTask 'docs', ['codo']
-    grunt.registerTask 'push-docs', ['codo', 'gh-pages']
     grunt.registerTask 'lint', ['coffeelint']
-    grunt.registerTask 'build', ['test', 'coffee:dist', 'docs']
+    grunt.registerTask 'build', ['test', 'coffee:dist']
     grunt.registerTask 'test', ['lint', 'mochaTest']
     grunt.registerTask 'default', ['build']

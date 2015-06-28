@@ -1,21 +1,6 @@
 {getSender} = require '../../util'
 module.exports = ->
 	return (client) ->
-
-		###
-		@overload #kick(chan, nick)
-		  Kicks a user from a channel.
-
-		  @param chan [String, Array] The channel or array of channels to kick in
-		  @param nick [String, Array] The channel or array of nicks to kick
-
-		@overload #kick(chan, nick, reason)
-		  Kicks a user from a channel with a reason.
-
-		  @param chan [String, Array] The channel or array of channels to kick in
-		  @param nick [String, Array] The channel or array of nicks to kick
-		  @param reason [String] The reason to give when kicking
-		###
 		client.kick = (chan, user, reason) ->
 			chans = [].concat chan
 			users = [].concat user

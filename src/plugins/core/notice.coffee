@@ -1,12 +1,6 @@
 {getSender} = require '../../util'
 module.exports = ->
 	return (client) ->
-
-		###
-		Sends a notice to the target.
-		@param target [String] The target to send the notice to. Can be user or channel or whatever else the IRC specification allows.
-		@param msg [String] The message to send.
-		###
 		client.notice = (target, msg) ->
 			if @opt.autoSplitMessage
 				@raw "NOTICE #{target} :#{line}" for line in @splitText "NOTICE #{target}", msg

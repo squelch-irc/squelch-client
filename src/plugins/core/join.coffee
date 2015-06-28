@@ -3,20 +3,6 @@ Promise = require 'bluebird'
 
 module.exports = ->
 	return (client) ->
-
-		###
-		@overload #join(chan)
-		  Joins a channel.
-
-		  @param chan [String, Array] The channel or array of channels to join
-		  @return [Promise<String>] A promise that resolves with the channel after successfully joining. If array of channels provided, it will resolve with them after they have all been joined.
-		@overload #join(chan, cb)
-		  Joins a channel.
-
-		  @param chan [String, Array] The channel or array of channels to join
-		  @param cb [Function] A callback that's called on successful join
-		  @return [Promise<String>] A promise that resolves with the channel after successfully joining. If array of channels provided, it will resolve with them after they have all been joined.
-		###
 		client.join = (chan, cb) ->
 			if chan instanceof Array
 				if chan.length is 0
