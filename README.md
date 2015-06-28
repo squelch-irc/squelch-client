@@ -21,8 +21,8 @@ client = new Client
 	autoConnect: false
 	channels: ["#kellyirc"]
 
-client.connect (nick) ->
-	client.on 'msg', (from, to, msg) ->
+client.connect ({nick}) ->
+	client.on 'msg', ({from, to, msg}) ->
 		if to is "#kellyirc"
 			client.msg to, "ECHO: #{msg}"
 ```
