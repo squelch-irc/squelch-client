@@ -190,8 +190,7 @@ describe 'Client', ->
 			server.expect 'JOIN #nice'
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #nice'
-				server.expect 'TOPIC #nice'
-			.then -> joinPromise
+				joinPromise
 			.then (e) ->
 				server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #nice PakaluPapito :Nice ppl only'
 				server.expect 'JOIN #nice'
@@ -240,8 +239,6 @@ describe 'Client', ->
 				should.not.exist err
 				e.oldNick.should.equal 'PakaluPapito'
 				e.newNick.should.equal 'PricklyPear'
-				client.listeners('nick').length.should.equal 0
-				client.listeners('raw').length.should.equal 0
 				done()
 			server.expect 'NICK PricklyPear'
 			.then ->
@@ -251,8 +248,6 @@ describe 'Client', ->
 			client.nick '!@#$%^&*()', async(done) (err, e) ->
 				err.command.should.equal '432'
 				should.not.exist e
-				client.listeners('nick').length.should.equal 0
-				client.listeners('raw').length.should.equal 0
 				done()
 			server.expect 'NICK !@#$%^&*()'
 			.then ->
@@ -267,8 +262,6 @@ describe 'Client', ->
 			.then (e) ->
 				e.oldNick.should.equal 'PakaluPapito'
 				e.newNick.should.equal 'PricklyPear'
-				client.listeners('nick').length.should.equal 0
-				client.listeners('raw').length.should.equal 0
 				done()
 
 
@@ -338,15 +331,12 @@ describe 'Client', ->
 			client.join '#furry', async(done) (err, chan) ->
 				should.not.exist err
 				chan.should.be.equal '#furry'
-				server.expect 'TOPIC #furry' # channel.coffee will auto ask for topic on creation
-				.then done
-				.catch done
+				done()
 			server.expect 'JOIN #furry'
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
 
 		it 'an array of channels with a callback', (done) ->
-			done = multiDone 2, done
 			client.join ['#furry', '#wizard'], (err, channels) ->
 				should.not.exist err
 				channels[0].should.be.equal '#furry'
@@ -357,12 +347,6 @@ describe 'Client', ->
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #wizard'
-				server.expect [ # channel.coffee will auto ask for topic on creation
-					'TOPIC #furry'
-					'TOPIC #wizard'
-				]
-			.then done
-			.catch done
 
 		it 'an array of channels should resolve the promise', (done) ->
 			joinPromise = client.join ['#furry', '#wizard']
@@ -370,11 +354,7 @@ describe 'Client', ->
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #wizard'
-				server.expect [ # channel.coffee will auto ask for topic on creation
-					'TOPIC #furry'
-					'TOPIC #wizard'
-				]
-			.then -> joinPromise
+				joinPromise
 			.then (e) ->
 				e[0].should.be.equal '#furry'
 				e[1].should.be.equal '#wizard'

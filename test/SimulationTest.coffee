@@ -69,8 +69,6 @@ describe 'handleReply simulations', ->
 				'PING :finished'
 			]
 			server.expect [
-				'TOPIC #sexy'
-				'TOPIC #Furry'
 				'PONG :finished'
 			]
 		.then done
@@ -262,8 +260,7 @@ describe 'handleReply simulations', ->
 				chan.should.equal '#gasstation'
 				nick.should.equal 'PakaluPapito'
 				client.getChannel('#gasstation').should.exist
-				server.expect 'TOPIC #gasstation'
-				.then done
+				done()
 
 		it 'should emit a join event', (done) ->
 			client.once 'join', async(done) (chan, nick) ->
@@ -277,8 +274,7 @@ describe 'handleReply simulations', ->
 			client.once 'join::#testchan', async(done) (chan, nick) ->
 				chan.should.equal '#testChan'
 				nick.should.equal 'PakaluPapito'
-				server.expect 'TOPIC #testChan'
-				.then done
+				done()
 			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com JOIN #testChan'
 
 	describe 'part', ->

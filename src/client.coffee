@@ -7,7 +7,7 @@ Promise = require 'bluebird'
 streamMap = require 'through2-map'
 color = require 'irc-colors'
 
-Channel = require './channel'
+{getSender} = require './util'
 {getReplyCode, getReplyName} = require './replies'
 
 defaultOpt =
@@ -32,15 +32,6 @@ defaultOpt =
 	selfSigned: false
 	certificateExpired: false
 	timeout: 120000
-
-###
-@nodoc
-Helper method to get nick or server out of the prefix of a message
-###
-getSender = (parsedReply) ->
-	if parsedReply.prefix.isServer
-		return parsedReply.prefix.host
-	return parsedReply.prefix.nick
 
 ###
 An IRC Client.
@@ -126,13 +117,12 @@ class Client extends EventEmitter2
 			wildcard: true
 			delimiter: '::'
 			newListener: false
-			maxListeners: 0
+		@setMaxListeners 0
 		@_ =
 			numRetries: 0
 			connected: false
 			disconnecting: false
 			messageQueue: []
-			channels: {}
 			iSupport: {}
 			greeting: {}
 			# default values in case there's no iSupport
@@ -149,6 +139,19 @@ class Client extends EventEmitter2
 		@opt[key] = value for key, value of opt
 		if not @opt.server?
 			throw new Error 'No server specified.'
+
+		# Use core plugins
+		@use require('./plugins/core/msg')()
+		@use require('./plugins/core/notice')()
+		@use require('./plugins/core/nick')()
+		@use require('./plugins/core/join')()
+		@use require('./plugins/core/part')()
+		@use require('./plugins/core/kick')()
+		@use require('./plugins/core/invite')()
+		@use require('./plugins/core/mode')()
+		@use require('./plugins/core/motd')()
+		@use require('./plugins/channel')()
+
 		if @opt.autoConnect
 			@connect()
 
@@ -234,7 +237,10 @@ class Client extends EventEmitter2
 							@handleReply ircMsg.parse "ERROR :Ping Timeout(#{seconds} seconds)"
 						, @opt.timeout
 					, @opt.timeout
-					@handleReply data
+					if data?
+						@handleReply data
+						@emit 'raw', data
+
 				@conn.on 'error', (e) =>
 					@logError 'Disconnected by network error.'
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
@@ -355,161 +361,10 @@ class Client extends EventEmitter2
 		return (msg.slice(i, i+limit) for i in [0..msg.length] by limit)
 			
 	###
-	Sends a message (PRIVMSG) to the target.
-	@param target [String] The target to send the message to. Can be user or channel or whatever else the IRC specification allows.
-	@param msg [String] The message to send.
+	Registers a plugin with this client.
+	@param plugin [Function] A function that accepts this client as an argument
 	###
-	msg: (target, msg) ->
-		if @opt.autoSplitMessage
-			@raw "PRIVMSG #{target} :#{line}" for line in @splitText "PRIVMSG #{target}", msg
-		else
-			@raw "PRIVMSG #{target} :#{msg}"
-
-	###
-	Sends an action to the target.
-	@param target [String] The target to send the message to. Can be user or channel or whatever else the IRC specification allows.
-	@param msg [String] The action to send.
-	###
-	action: (target, msg) ->
-		if @opt.autoSplitMessage
-			@msg target, "\x01ACTION #{line}\x01" for line in @splitText 'PRIVMSG #{target}', msg, 9
-		else
-			@msg target, "\x01ACTION #{msg}\x01"
-
-	###
-	Sends a notice to the target.
-	@param target [String] The target to send the notice to. Can be user or channel or whatever else the IRC specification allows.
-	@param msg [String] The message to send.
-	###
-	notice: (target, msg) ->
-		if @opt.autoSplitMessage
-			@raw "NOTICE #{target} :#{line}" for line in @splitText "NOTICE #{target}", msg
-		else
-			@raw "NOTICE #{target} :#{msg}"
-
-	###
-	@overload #nick()
-	  Gets the client's current nickname.
-	  @return [String] The bot's current nickname.
-	
-	@overload #nick(desiredNick)
-	  Changes the client's nickname.
-	  @param desiredNick [String] The new nickname to change to.
-	  @return [Promise<Object,Object>] A promise that resolves with an object containing oldNick and newNick on successful nick change, and rejects with the parsed reply of the nick change error when the server rejects a nick change
-
-	@overload #nick(desiredNick, cb)
-	  Changes the client's nickname, with a callback for success or failure.
-	  @param desiredNick [String] The new nickname to change to.
-	  @param cb [function] (err, old, new) If successful, err will be undefined, otherwise err will be the parsed message object of the error
-	  @return [Promise<Object,Object>] A promise that resolves with an object containing oldNick and newNick on successful nick change, and rejects with the parsed reply of the nick change error when the server rejects a nick change
-	###
-	nick: (desiredNick, cb) ->
-		return @_.nick if not desiredNick?
-		return new Promise (resolve, reject) =>
-			nickListener = (oldNick, newNick) ->
-				if newNick is desiredNick
-					removeListeners()
-					resolve {oldNick, newNick}
-			errListener = (msg) ->
-				if 431 <= parseInt(msg.command) <= 436 # irc errors for nicks
-					removeListeners()
-					# Don't error while we're still trying to connect
-					if @isConnected()
-						reject msg
-
-			removeListeners = =>
-				@removeListener 'raw', errListener
-				@removeListener 'nick', nickListener
-
-			@on 'nick', nickListener
-			@on 'raw', errListener
-
-			@raw "NICK #{desiredNick}"
-		.nodeify cb or @cbNoop
-
-	###
-	@overload #join(chan)
-	  Joins a channel.
-
-	  @param chan [String, Array] The channel or array of channels to join
-	  @return [Promise<String>] A promise that resolves with the channel after successfully joining. If array of channels provided, it will resolve with them after they have all been joined.
-	@overload #join(chan, cb)
-	  Joins a channel.
-
-	  @param chan [String, Array] The channel or array of channels to join
-	  @param cb [Function] A callback that's called on successful join
-	  @return [Promise<String>] A promise that resolves with the channel after successfully joining. If array of channels provided, it will resolve with them after they have all been joined.
-	###
-	join: (chan, cb) ->
-		# TODO: handle join error replies!!
-		if chan instanceof Array
-			if chan.length is 0
-				return
-			@raw "JOIN #{chan.join()}"
-			joinPromises = for c in chan
-				do (c) =>
-					new Promise (resolve) =>
-						@once ['join', c], (channel, nick) ->
-							resolve channel
-			return Promise.all(joinPromises).nodeify cb or @cbNoop
-
-		else
-			return new Promise (resolve) =>
-				@raw "JOIN #{chan}"
-				@once ['join', chan], (channel, nick) ->
-					resolve channel
-			.nodeify cb or @cbNoop
-
-	###
-	@overload #part(chan)
-	  Parts a channel.
-
-	  @param chan [String, Array] The channel or array of channels to part
-	  @return [Promise<String>] A promise that resolves with the channel after successfully parting. If array of channels provided, it will resolve with them after they have all been parted.
-	@overload #part(chan, reason)
-	  Parts a channel with a reason message.
-
-	  @param chan [String, Array] The channel or array of channels to part
-	  @param reason [String] The reason message
-	  @return [Promise<String>] A promise that resolves with the channel after successfully parting. If array of channels provided, it will resolve with them after they have all been parted.
-	@overload #part(chan, cb)
-	  Parts a channel.
-
-	  @param chan [String, Array] The channel or array of channels to part
-	  @param cb [Function] A callback that's called on successful part
-	  @return [Promise<String>] A promise that resolves with the channel after successfully parting. If array of channels provided, it will resolve with them after they have all been parted.
-
-	@overload #part(chan, reason, cb)
-	  Parts a channel with a reason message.
-
-	  @param chan [String, Array] The channel or array of channels to part
-	  @param reason [String] The reason message
-	  @param cb [Function] A callback that's called on successful part
-	  @return [Promise<String>] A promise that resolves with the channel after successfully parting. If array of channels provided, it will resolve with them after they have all been parted.
-	###
-	part: (chan, reason, cb) ->
-		if not reason?
-			reason = ''
-		else if reason instanceof Function
-			cb = reason
-			reason = ''
-		else
-			reason = ' :' + reason
-		if chan instanceof Array and chan.length > 0
-			@raw "PART #{chan.join()+reason}"
-			partPromises = for c in chan
-				do (c) =>
-					new Promise (resolve) =>
-						@once ['part', c], (channel, nick) ->
-							resolve channel
-			return Promise.all(partPromises).nodeify cb or @cbNoop
-
-		else
-			return new Promise (resolve) =>
-				@raw "PART #{chan+reason}"
-				@once ['part', chan], (channel, nick) ->
-					resolve channel
-			.nodeify cb or @cbNoop
+	use: (plugin) -> plugin @
 
 	###
 	Returns if this client is connected.
@@ -518,100 +373,6 @@ class Client extends EventEmitter2
 	@return [Boolean] true if connected, false otherwise
 	###
 	isConnected: -> return @_.connected
-
-	###
-	@overload #kick(chan, nick)
-	  Kicks a user from a channel.
-
-	  @param chan [String, Array] The channel or array of channels to kick in
-	  @param nick [String, Array] The channel or array of nicks to kick
-
-	@overload #kick(chan, nick, reason)
-	  Kicks a user from a channel with a reason.
-
-	  @param chan [String, Array] The channel or array of channels to kick in
-	  @param nick [String, Array] The channel or array of nicks to kick
-	  @param reason [String] The reason to give when kicking
-	###
-	kick: (chan, user, reason) ->
-		chans = [].concat chan
-		users = [].concat user
-		if reason?
-			reason = ' :' + reason
-		else
-			reason = ''
-		for c in chans
-			for u in users
-				@raw "KICK #{c} #{u}#{reason}"
-
-	###
-	Sets mode +b on a hostmask in a channel.
-	@param chan [String] The channel to set the mode in
-	@param hostmask [String] The hostmask to ban
-	###
-	ban: (chan, hostmask) ->
-		@mode chan, "+b #{hostmask}"
-
-	###
-	Sets mode -b on a hostmask in a channel.
-	@param chan [String] The channel to set the mode in
-	@param hostmask [String] The hostmask to unban
-	###
-	unban: (chan, hostmask) ->
-		@mode chan, "-b #{hostmask}"
-
-	###
-	@overload #mode(chan, modeStr)
-		Sets a given mode on a hostmask in a channel.
-		@param chan [String] The channel to set the mode in
-		@param modeStr [String] The modes and arguments to set for that channel
-	@overload #mode(chan)
-		Returns the mode of a channel.
-		@param chan [String] The channel to get the mode of
-	###
-	mode: (chan, modeStr) ->
-		return @_.channels[chan.toLowerCase()].mode() if not modeStr?
-		@raw "MODE #{chan} #{modeStr}"
-
-	###
-	Sets mode +o on a user in a channel.
-	@param chan [String] The channel to set the mode in
-	@param user [String] The user to op
-	###
-	op: (chan, user) ->
-		@mode chan, "+o #{user}"
-
-	###
-	Sets mode -o on a user in a channel.
-	@param chan [String] The channel to set the mode in
-	@param user [String] The user to deop
-	###
-	deop: (chan, user) ->
-		@mode chan, "-o #{user}"
-
-	###
-	Sets mode +v on a user in a channel.
-	@param chan [String] The channel to set the mode in
-	@param user [String] The user to voice
-	###
-	voice: (chan, user) ->
-		@mode chan, "+v #{user}"
-
-	###
-	Sets mode -v on a user in a channel.
-	@param chan [String] The channel to set the mode in
-	@param user [String] The user to devoice
-	###
-	devoice: (chan, user) ->
-		@mode chan, "-v #{user}"
-
-	###
-	Invites a user to a channel.
-	@param nick [String] The user to invite
-	@param chan [String] The channel to invite the user to
-	###
-	invite: (nick, chan) ->
-		@raw "INVITE #{nick} #{chan}"
 
 	###
 	@overload #verbose()
@@ -674,32 +435,6 @@ class Client extends EventEmitter2
 		@opt.autoRejoin = enabled
 
 	###
-	Returns the channel objects of all channels the client is in.
-	The array is a shallow copy, so modify it if you want.
-	However, avoid modifying the private values in the channels themselves.
-	@return [Array] The array of all channels the client is in.
-	###
-	channels: () ->
-		return getChannel(chan) for chan in @_.channels
-
-	###
-	Gets the Channel object if the bot is in that channel.
-	@param name [String] The name of the channel
-	@return [Boolean] The Channel object, or undefined if the bot is not in that channel.
-	###
-	getChannel: (name) ->
-		chan = @_.channels[name.toLowerCase()]
-		return chan?.clone()
-
-	###
-	Checks if the client is in the channel.
-	@param name [String] The name of the channel
-	@return [Boolean] true if the bot is in the given channel.
-	###
-	isInChannel: (name) ->
-		return getChannel(name) instanceof Channel
-
-	###
 	Checks if a string represents a channel, based on the CHANTYPES value
 	from the server's iSupport 005 response. Typically this means it checks
 	if the string starts with a '#'.
@@ -717,127 +452,13 @@ class Client extends EventEmitter2
 			return
 		@log '<-' + parsedReply.raw
 		switch parsedReply.command
-			when 'JOIN'
-				nick = getSender parsedReply
-				chan = parsedReply.params[0]
-				if nick is @nick()
-					@_.channels[chan.toLowerCase()] = new Channel @, chan
-					@raw "TOPIC #{chan}" # request topic so we have it
-				else
-					@_.channels[chan.toLowerCase()]._.users[nick] = ''
-				@emit 'join', chan, nick
-				@emit ['join', chan], chan, nick
-				# Because no one likes case sensitivity
-				if chan.toLowerCase() isnt chan
-					@emit ['join', chan.toLowerCase()], chan, nick
-			when 'PART'
-				nick = getSender parsedReply
-				chan = parsedReply.params[0]
-				reason = parsedReply.params[1]
-				if nick is @nick()
-					delete @_.channels[chan.toLowerCase()]
-				else
-					users = @_.channels[chan.toLowerCase()]._.users
-					for user of users when user is nick
-						delete users[nick]
-						break
-				@emit 'part', chan, nick, reason
-				@emit ['part', chan], chan, nick, reason
-				# Because no one likes case sensitivity
-				if chan.toLowerCase() isnt chan
-					@emit ['part', chan.toLowerCase()], chan, nick
-			when 'NICK'
-				oldnick = getSender parsedReply
-				newnick = parsedReply.params[0]
-				if oldnick is @nick()
-					@_.nick = newnick
-				for name, chan of @_.channels
-					for user, status of chan._.users when user is oldnick
-						chan._.users[newnick] = chan._.users[oldnick]
-						delete chan._.users[oldnick]
-				@emit 'nick', oldnick, newnick
-			when 'PRIVMSG'
-				from = getSender parsedReply
-				to = parsedReply.params[0]
-				msg = parsedReply.params[1]
-				if msg.lastIndexOf('\u0001ACTION', 0) is 0 # startsWith
-					@emit 'action', from, to, msg.substring(8, msg.length-1)
-				else
-					@emit 'msg', from, to, msg
-			when 'NOTICE'
-				from = getSender parsedReply
-				to = parsedReply.params[0]
-				msg = parsedReply.params[1]
-				@emit 'notice', from, to, msg
-			when 'INVITE'
-				from = getSender parsedReply
-				# don't need to because you don't get invites for other ppl
-				chan = parsedReply.params[1]
-				@emit 'invite', from, chan
-			when 'KICK'
-				kicker = getSender parsedReply
-				chan = parsedReply.params[0]
-				nick = parsedReply.params[1]
-				reason = parsedReply.params[2]
-				if nick is @nick()
-					delete @_.channels[chan.toLowerCase()]
-					@join chan if @opt.autoRejoin
-				else
-					users = @_.channels[chan.toLowerCase()]._.users
-					for user of users when user is nick
-						delete users[nick]
-						break
-				@emit 'kick', chan, nick, kicker, reason
-			when 'MODE'
-				sender = getSender parsedReply
-				chan = parsedReply.params[0]
-				user = chan if not @isChannel(chan)
-				modes = parsedReply.params[1]
-				params = parsedReply.params[2..] if parsedReply.params.length > 2
-				adding = true
-				for c in modes
-					if c is '+'
-						adding = true
-						continue
-					if c is '-'
-						adding = false
-						continue
-					if not user? # We're dealin with a real deal channel mode
-						param = undefined
-						# Cases where mode has param
-						if @_.chanmodes[0].indexOf(c) isnt -1 or
-						@_.chanmodes[1].indexOf(c) isnt -1 or
-						(adding and @_.chanmodes[2].indexOf(c) isnt -1) or
-						@_.prefix[c]?
-							param = params.shift()
-						if @_.prefix[c]? # Update user's mode in channel
-							@_.channels[chan.toLowerCase()]._.users[param] = if adding then @_.prefix[c] else ''
-						else # Update channel mode
-							channelModes = @_.channels[chan.toLowerCase()]._.mode
-							if adding
-								channelModes.push c
-							if not adding
-								index = channelModes.indexOf c
-								channelModes[index..index] = [] if index isnt -1
-						@emit '+mode', chan, sender, c, param if adding
-						@emit '-mode', chan, sender, c, param if not adding
-					else # We're dealing with some stupid user mode
-						# Ain't no one got time to keep track of user modes
-						@emit '+usermode', user, c, sender if adding
-						@emit '-usermode', user, c, sender if not adding
-
-
-				# @emit 'mode', chan, sender, mode
 			when 'QUIT'
 				nick = getSender parsedReply
 				reason = parsedReply.params[0]
-				if nick is @nick() # Dunno if this ever happens.
-					@_.channels = {}
-				else
-					for name, chan of @_.channels
-						for user of chan._.users when user is nick
-							delete chan._.users[nick]
-							break
+				for name, chan of @_.channels
+					for user of chan._.users when user is nick
+						delete chan._.users[nick]
+						break
 				@emit 'quit', nick, reason
 			when 'PING'
 				@raw "PONG :#{parsedReply.params[0]}", false
@@ -858,19 +479,19 @@ class Client extends EventEmitter2
 					setTimeout =>
 						@connect @opt.autoReconnectTries
 					, @opt.reconnectDelay
-			when getReplyCode('RPL_WELCOME')
+			when getReplyCode 'RPL_WELCOME'
 				@_.connected = true
 				@_.nick = parsedReply.params[0]
 				@emit 'connect', @_.nick
 				@join @opt.channels
 
-			when getReplyCode('RPL_YOURHOST')
+			when getReplyCode 'RPL_YOURHOST'
 				@_.greeting.yourHost = parsedReply.params[1]
-			when getReplyCode('RPL_CREATED')
+			when getReplyCode 'RPL_CREATED'
 				@_.greeting.created = parsedReply.params[1]
-			when getReplyCode('RPL_MYINFO')
+			when getReplyCode 'RPL_MYINFO'
 				@_.greeting.myInfo = parsedReply.params[1..].join ' '
-			when getReplyCode('RPL_ISUPPORT')
+			when getReplyCode 'RPL_ISUPPORT'
 				for item in parsedReply.params[1..]
 					continue if item.indexOf(' ') isnt -1
 					split = item.split '='
@@ -890,41 +511,5 @@ class Client extends EventEmitter2
 							# chanmodes[0,1] always require param
 							# chanmodes[2] requires param on set
 							# chanmodes[3] never require param
-							
-			when getReplyCode('RPL_NOTOPIC')
-				@_.channels[parsedReply.params[1].toLowerCase()]._.topic = ''
-			when getReplyCode('RPL_TOPIC')
-				@_.channels[parsedReply.params[1].toLowerCase()]._.topic = parsedReply.params[2]
-			when getReplyCode('RPL_TOPIC_WHO_TIME')
-				chan = @_.channels[parsedReply.params[1].toLowerCase()]
-				chan._.topicSetter = parsedReply.params[2]
-				chan._.topicTime = new Date parseInt(parsedReply.params[3])
-			when getReplyCode('RPL_NAMREPLY')
-				# TODO: trigger event on name update
-				chan = @_.channels[parsedReply.params[2].toLowerCase()]
-				break if not chan?
-				names = parsedReply.params[3].split ' '
-				for name in names
-					if @_.reversePrefix[name[0]]?
-						chan._.users[name[1..]] = name[0]
-					else
-						chan._.users[name] = ''
-			when getReplyCode('RPL_ENDOFNAMES')
-				chan = parsedReply.params[1]
-				@emit 'names', chan
-			when getReplyCode('RPL_MOTD')
-				@_.MOTD += parsedReply.params[1] + '\r\n'
-			when getReplyCode('RPL_MOTDSTART')
-				@_.MOTD = parsedReply.params[1] + '\r\n'
-			when getReplyCode('RPL_ENDOFMOTD')
-				@emit 'motd', @_.MOTD
-
-			when getReplyCode('ERR_NICKNAMEINUSE')
-				if @opt.autoNickChange
-					@_.numRetries++
-					@nick @opt.nick + @_.numRetries
-				else
-					@disconnect()
-		@emit 'raw', parsedReply
 
 module.exports = Client
