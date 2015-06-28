@@ -16,15 +16,15 @@ module.exports = ->
 				partPromises = for c in chan
 					do (c) =>
 						new Promise (resolve) =>
-							@once ['part', c], (channel, nick) ->
-								resolve channel
+							@once ['part', c], ({chan, nick}) ->
+								resolve chan
 				return Promise.all(partPromises).nodeify cb or @cbNoop
 
 			else
 				return new Promise (resolve) =>
 					@raw "PART #{chan+reason}"
-					@once ['part', chan], (channel, nick) ->
-						resolve channel
+					@once ['part', chan], ({chan, nick}) ->
+						resolve chan
 				.nodeify cb or @cbNoop
 		client.on 'raw', (reply) ->
 			if reply.command is 'PART'
@@ -32,8 +32,8 @@ module.exports = ->
 				chan = reply.params[0]
 				reason = reply.params[1]
 						
-				@emit 'part', chan, nick, reason
-				@emit ['part', chan], chan, nick, reason
+				@emit 'part', {chan, nick, reason}
+				@emit ['part', chan], {chan, nick, reason}
 				# Because no one likes case sensitivity
 				if chan.toLowerCase() isnt chan
-					@emit ['part', chan.toLowerCase()], chan, nick
+					@emit ['part', chan.toLowerCase()], {chan, nick, reason}

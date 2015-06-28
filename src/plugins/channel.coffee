@@ -124,21 +124,21 @@ module.exports = ->
 						chan._.users[name] = ''
 			if reply.command is getReplyCode 'RPL_ENDOFNAMES'
 				chan = reply.params[1]
-				@emit 'names', chan
+				@emit 'names', {chan}
 
-		client.on 'nick', (oldnick, newnick) ->
+		client.on 'nick', ({oldNick, newNick}) ->
 			for name, chan of @_.channels
-				for user, status of chan._.users when user is oldnick
-					chan._.users[newnick] = chan._.users[oldnick]
-					delete chan._.users[oldnick]
+				for user, status of chan._.users when user is oldNick
+					chan._.users[newNick] = chan._.users[oldNick]
+					delete chan._.users[oldNick]
 
-		client.on 'join', (chan, nick) ->
+		client.on 'join', ({chan, nick}) ->
 			if nick is @_.nick
 				@_.channels[chan.toLowerCase()] = new Channel @, chan
 			else
 				@_.channels[chan.toLowerCase()]._.users[nick] = ''
 
-		client.on 'part', (chan, nick) ->
+		client.on 'part', ({chan, nick}) ->
 			if nick is @_.nick
 				delete @_.channels[chan.toLowerCase()]
 			else
@@ -147,21 +147,21 @@ module.exports = ->
 					delete users[nick]
 					break
 
-		client.on 'kick', (chan, nick) ->
+		client.on 'kick', ({chan, nick}) ->
 			if nick is @_.nick
 				delete @_.channels[chan.toLowerCase()]
 				@raw "JOIN #{chan}" if @opt.autoRejoin
 			else
 				delete @_.channels[chan.toLowerCase()]._.users[nick]
 
-		client.on '+mode', (chan, sender, mode, param) ->
+		client.on '+mode', ({chan, sender, mode, param}) ->
 			if @_.prefix[mode]? # Update user's mode in channel
 				@_.channels[chan.toLowerCase()]._.users[param] = @_.prefix[mode]
 			else # Update channel mode
 				channelModes = @_.channels[chan.toLowerCase()]._.mode
 				channelModes.push mode
 
-		client.on '-mode', (chan, sender, mode, param) ->
+		client.on '-mode', ({chan, sender, mode, param}) ->
 			if @_.prefix[mode]? # Update user's mode in channel
 				@_.channels[chan.toLowerCase()]._.users[param] = ''
 			else # Update channel mode

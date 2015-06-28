@@ -45,9 +45,9 @@ module.exports = ->
 						(adding and @_.chanmodes[2].indexOf(c) isnt -1) or
 						@_.prefix[c]?
 							param = params.shift()
-						@emit '+mode', chan, sender, c, param if adding
-						@emit '-mode', chan, sender, c, param if not adding
+						@emit '+mode', {chan, sender, mode: c, param} if adding
+						@emit '-mode', {chan, sender, mode: c, param} if not adding
 					else # We're dealing with some stupid user mode
 						# Ain't no one got time to keep track of user modes
-						@emit '+usermode', user, c, sender if adding
-						@emit '-usermode', user, c, sender if not adding
+						@emit '+usermode', {user, mode: c, sender} if adding
+						@emit '-usermode', {user, mode: c, sender} if not adding

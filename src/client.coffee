@@ -109,8 +109,8 @@ class Client extends EventEmitter2
 			onConnect = =>
 				@conn.setEncoding 'utf8'
 				@conn.removeListener 'error', errorListener
-				@once 'connect', (nick) ->
-					resolve nick
+				@once 'connect', ({nick}) ->
+					resolve {nick}
 				@log 'Connected'
 				stream = @conn
 				if @opt.stripColors
@@ -125,7 +125,7 @@ class Client extends EventEmitter2
 						pingTime = new Date().getTime()
 						@_.timeout = setTimeout =>
 							seconds = (new Date().getTime() - pingTime) / 1000
-							@emit 'timeout', seconds
+							@emit 'timeout', {seconds}
 							@handleReply ircMsg.parse "ERROR :Ping Timeout(#{seconds} seconds)"
 						, @opt.timeout
 					, @opt.timeout
@@ -259,7 +259,7 @@ class Client extends EventEmitter2
 					for user of chan._.users when user is nick
 						delete chan._.users[nick]
 						break
-				@emit 'quit', nick, reason
+				@emit 'quit', {nick, reason}
 			when 'PING'
 				@raw "PONG :#{parsedReply.params[0]}", false
 			when 'ERROR'
@@ -282,7 +282,7 @@ class Client extends EventEmitter2
 			when getReplyCode 'RPL_WELCOME'
 				@_.connected = true
 				@_.nick = parsedReply.params[0]
-				@emit 'connect', @_.nick
+				@emit 'connect', nick: @_.nick
 				@join @opt.channels
 
 			when getReplyCode 'RPL_YOURHOST'

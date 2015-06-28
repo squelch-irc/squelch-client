@@ -7,4 +7,4 @@ module.exports = ->
 			if reply.command is getReplyCode 'RPL_MOTDSTART'
 				@_.MOTD = reply.params[1] + '\r\n'
 			if reply.command is getReplyCode 'RPL_ENDOFMOTD'
-				@emit 'motd', @_.MOTD
+				@emit 'motd', {motd: @_.MOTD}

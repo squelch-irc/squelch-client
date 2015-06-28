@@ -8,4 +8,4 @@ module.exports = ->
 			if reply.command is 'INVITE'
 				from = getSender reply
 				chan = reply.params[1]
-				@emit 'invite', from, chan
+				@emit 'invite', {from, chan}

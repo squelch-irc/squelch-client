@@ -19,6 +19,6 @@ module.exports = ->
 				to = reply.params[0]
 				msg = reply.params[1]
 				if msg.lastIndexOf('\u0001ACTION', 0) is 0 # startsWith
-					@emit 'action', from, to, msg.substring(8, msg.length-1)
+					@emit 'action', {from, to, msg: msg.substring(8, msg.length-1)}
 				else
-					@emit 'msg', from, to, msg
+					@emit 'msg', {from, to, msg}

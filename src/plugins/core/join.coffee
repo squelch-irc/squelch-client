@@ -11,15 +11,15 @@ module.exports = ->
 				joinPromises = for c in chan
 					do (c) =>
 						new Promise (resolve) =>
-							@on ['join', c], (channel, nick) ->
-								resolve channel
+							@on ['join', c], ({chan, nick}) ->
+								resolve chan
 				return Promise.all(joinPromises).nodeify cb or @cbNoop
 
 			else
 				return new Promise (resolve) =>
 					@raw "JOIN #{chan}"
-					@once ['join', chan], (channel, nick) ->
-						resolve channel
+					@once ['join', chan], ({chan, nick}) ->
+						resolve chan
 				.nodeify cb or @cbNoop
 
 		client.on 'raw', (reply) ->
@@ -27,8 +27,8 @@ module.exports = ->
 				nick = getSender reply
 				chan = reply.params[0]
 
-				@emit 'join', chan, nick
-				@emit ['join', chan], chan, nick
+				@emit 'join', {chan, nick}
+				@emit ['join', chan], {chan, nick}
 				# Because no one likes case sensitivity
 				if chan.toLowerCase() isnt chan
-					@emit ['join', chan.toLowerCase()], chan, nick
+					@emit ['join', chan.toLowerCase()], {chan, nick}

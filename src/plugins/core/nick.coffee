@@ -7,7 +7,7 @@ module.exports = ->
 		client.nick = (desiredNick, cb) ->
 			return @_.nick if not desiredNick?
 			return new Promise (resolve, reject) =>
-				nickListener = (oldNick, newNick) ->
+				nickListener = ({oldNick, newNick}) ->
 					if newNick is desiredNick
 						removeListeners()
 						resolve {oldNick, newNick}
@@ -30,12 +30,12 @@ module.exports = ->
 
 		client.on 'raw', (reply) ->
 			if reply.command is 'NICK'
-				oldnick = getSender reply
-				newnick = reply.params[0]
-				if oldnick is @nick()
-					@_.nick = newnick
+				oldNick = getSender reply
+				newNick = reply.params[0]
+				if oldNick is @nick()
+					@_.nick = newNick
 
-				@emit 'nick', oldnick, newnick
+				@emit 'nick', {oldNick, newNick}
 			else if reply.command is getReplyCode 'ERR_NICKNAMEINUSE'
 				if @opt.autoNickChange
 					@_.numRetries++

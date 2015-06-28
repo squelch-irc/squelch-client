@@ -12,4 +12,4 @@ module.exports = ->
 				from = getSender reply
 				to = reply.params[0]
 				msg = reply.params[1]
-				@emit 'notice', from, to, msg
+				@emit 'notice', {from, to, msg}

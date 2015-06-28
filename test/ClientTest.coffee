@@ -50,7 +50,7 @@ describe 'Client', ->
 		.then ->
 			server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
 			connectPromise
-		.then (nick) ->
+		.then ({nick}) ->
 			nick.should.equal 'PakaluPapito'
 			done()
 
@@ -186,12 +186,13 @@ describe 'Client', ->
 	describe 'autoRejoin', ->
 		it 'should send a join command after a KICK', (done) ->
 			client.autoRejoin true
-			joinPromise = client.join ['#nice']
+			joinPromise = client.join '#nice'
 			server.expect 'JOIN #nice'
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #nice'
 				joinPromise
 			.then (e) ->
+				e.should.equal '#nice'
 				server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #nice PakaluPapito :Nice ppl only'
 				server.expect 'JOIN #nice'
 			.then done
@@ -445,7 +446,7 @@ describe 'Client', ->
 			.then ->
 				server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
 				connectPromise
-			.then (nick) ->
+			.then ({nick}) ->
 				nick.should.equal 'PakaluPapito'
 				done()
 
