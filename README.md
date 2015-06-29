@@ -4,7 +4,7 @@
 An IRC Client for Node.js written in CoffeeScript, used in the Squelch IRC client.
 
 ## Documentation
-You can find the full documentation [here](https://github.com/squelch-irc/squelch-client/wiki/Channel).
+You can find the full documentation [here](https://github.com/squelch-irc/squelch-client/wiki/Client).
 
 
 ## Installation
