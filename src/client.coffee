@@ -178,9 +178,13 @@ class Client extends EventEmitter2
 		.nodeify cb or @cbNoop
 
 	forceQuit: (reason) ->
-		@raw 'QUIT' + (if reason? then " :#{reason}" else ''), false
-		@_.disconnecting = true
-		@handleReply ircMsg.parse 'ERROR :Force Quit'
+		if @isConnected()
+			@raw 'QUIT' + (if reason? then " :#{reason}" else ''), false
+			@_.disconnecting = true
+			@handleReply ircMsg.parse 'ERROR :Force Quit'
+		else
+			@conn.destroy()
+			@conn = null
 
 	raw: (msg, delay = true) ->
 		if not msg?
