@@ -182,7 +182,7 @@ class Client extends EventEmitter2
 			@raw 'QUIT' + (if reason? then " :#{reason}" else ''), false
 			@_.disconnecting = true
 			@handleReply ircMsg.parse 'ERROR :Force Quit'
-		else
+		else if @conn?
 			@conn.destroy()
 			@conn = null
 
