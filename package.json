@@ -29,7 +29,8 @@
   "scripts": {
     "test": "grunt test",
     "doc": "grunt docs",
-    "build": "grunt build"
+    "build": "grunt build",
+    "prepublish": "grunt build"
   },
   "keywords": [
     "Internet Relay Chat",
