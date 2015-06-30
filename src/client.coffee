@@ -271,14 +271,14 @@ class Client extends EventEmitter2
 				@conn = null
 				@_.connected = false
 				@emit 'error', parsedReply.params[0] if not @_.disconnecting
-				@_.disconnecting = false
-				@emit 'disconnect'
 				@log 'Disconnected from server'
-				if @opt.autoReconnect and @opt.autoReconnectTries > 0
+				if not @_.disconnecting and @opt.autoReconnect and @opt.autoReconnectTries > 0
 					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
 					setTimeout =>
 						@connect @opt.autoReconnectTries
 					, @opt.reconnectDelay
+				@_.disconnecting = false
+				@emit 'disconnect'
 			when getReplyCode 'RPL_WELCOME'
 				@_.connected = true
 				@_.nick = parsedReply.params[0]
