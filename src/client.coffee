@@ -259,10 +259,6 @@ class Client extends EventEmitter2
 			when 'QUIT'
 				nick = getSender parsedReply
 				reason = parsedReply.params[0]
-				for name, chan of @_.channels
-					for user of chan._.users when user is nick
-						delete chan._.users[nick]
-						break
 				@emit 'quit', {nick, reason}
 			when 'PING'
 				@raw "PONG :#{parsedReply.params[0]}", false

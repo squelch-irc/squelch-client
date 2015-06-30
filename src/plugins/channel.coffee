@@ -104,6 +104,7 @@ module.exports = ->
 			oldMode chan, modeStr
 
 		client.on 'raw', (reply) ->
+
 			if reply.command is getReplyCode 'RPL_NOTOPIC'
 				@_.channels[reply.params[1].toLowerCase()]._.topic = ''
 			if reply.command is getReplyCode 'RPL_TOPIC'
@@ -128,7 +129,7 @@ module.exports = ->
 
 		client.on 'nick', ({oldNick, newNick}) ->
 			for name, chan of @_.channels
-				for user, status of chan._.users when user is oldNick
+				if chan._.users[oldNick]?
 					chan._.users[newNick] = chan._.users[oldNick]
 					delete chan._.users[oldNick]
 
@@ -143,9 +144,7 @@ module.exports = ->
 				delete @_.channels[chan.toLowerCase()]
 			else
 				users = @_.channels[chan.toLowerCase()]._.users
-				for user of users when user is nick
-					delete users[nick]
-					break
+				delete users[nick]
 
 		client.on 'kick', ({chan, nick}) ->
 			if nick is @_.nick
@@ -153,6 +152,10 @@ module.exports = ->
 				@raw "JOIN #{chan}" if @opt.autoRejoin
 			else
 				delete @_.channels[chan.toLowerCase()]._.users[nick]
+
+		client.on 'quit', ({nick}) ->
+			for name, chan of @_.channels
+				delete chan._.users[nick]
 
 		client.on '+mode', ({chan, sender, mode, param}) ->
 			if @_.prefix[mode]? # Update user's mode in channel
