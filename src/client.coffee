@@ -197,7 +197,7 @@ class Client extends EventEmitter2
 		else
 			setTimeout @dequeue, 0 if @_.messageQueue.length is 0
 			@_.messageQueue.push msg
-		
+
 	# Sends a raw message on the message queue
 	dequeue: () =>
 		msg = @_.messageQueue.shift()
@@ -219,7 +219,7 @@ class Client extends EventEmitter2
 			2 -						# /r/n
 			extra					# any extra space requested
 		return (msg.slice(i, i+limit) for i in [0..msg.length] by limit)
-			
+
 	use: (plugin) ->
 		plugin @
 		@
@@ -270,7 +270,7 @@ class Client extends EventEmitter2
 				clearTimeout @_.timeout
 				@conn = null
 				@_.connected = false
-				@emit 'error', parsedReply.params[0] if not @_.disconnecting
+				@emit 'error', parsedReply if not @_.disconnecting
 				@log 'Disconnected from server'
 				if not @_.disconnecting and @opt.autoReconnect and @opt.autoReconnectTries > 0
 					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"

@@ -177,7 +177,7 @@ describe 'handleReply simulations', ->
 				client.once 'connect', ({nick}) ->
 					nick.should.equal 'PakaluPapito'
 					done()
-					
+
 		it 'should auto join the channels in opt.channels', (done) ->
 			server = new TestServer 6667
 			client = new Client
@@ -323,7 +323,7 @@ describe 'handleReply simulations', ->
 	describe 'error', ->
 		it 'should emit an error event', (done) ->
 			client.once 'error', async(done) (msg) ->
-				msg.should.equal 'Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)'
+				msg.params[0].should.equal 'Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)'
 				done()
 			server.reply 'ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)'
 
