@@ -88,14 +88,14 @@ module.exports = ->
 		client._.channels = {}
 
 		client.channels = ->
-			return getChannel(chan) for chan in @_.channels
+			return (@getChannel(chan) for chan of @_.channels)
 
 		client.getChannel = (name) ->
 			chan = @_.channels[name.toLowerCase()]
 			return chan?.clone()
 
 		client.isInChannel = (name) ->
-			return getChannel(name) instanceof Channel
+			return @getChannel(name) instanceof Channel
 
 		# Override client.mode so it can access channel data
 		oldMode = client.mode
