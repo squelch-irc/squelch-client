@@ -106,9 +106,12 @@ describe 'handleReply simulations', ->
 				chan.topic().should.equal 'Welcome to the #sexy!'
 				chan.topicSetter().should.equal 'KR!~KR@78-72-225-13-no193.business.telia.com'
 				chan.topicTime().getTime().should.equal 1394457068
-				chan._.users['KR'].should.equal '@'
-				chan._.users['Kurea'].should.equal '+'
-				chan._.users['Chase'].should.equal ''
+				chan.contains('KR').should.equal true
+				chan.getStatus('KR').should.equal '@'
+				chan.contains('Kurea').should.equal true
+				chan.getStatus('Kurea').should.equal '+'
+				chan.contains('Chase').should.equal true
+				chan.getStatus('Chase').should.equal ''
 				should.not.exist chan._.users['Bud']
 			testFurry = (chan) ->
 				chan.should.exist

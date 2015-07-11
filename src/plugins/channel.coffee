@@ -29,6 +29,12 @@ class Channel
 	client: ->
 		return @_.client
 
+	contains: (nick) ->
+		return @_.users[nick]?
+
+	getStatus: (nick) ->
+		return @_.users[nick]
+
 	topic: (topic) ->
 		return @_.topic  if not topic?
 		@_.client.raw "TOPIC #{@_.name} #{topic}"
@@ -94,8 +100,8 @@ module.exports = ->
 			chan = @_.channels[name.toLowerCase()]
 			return chan?.clone()
 
-		client.isInChannel = (name) ->
-			return @getChannel(name) instanceof Channel
+		client.isInChannel = (name, nick = @nick()) ->
+			return !!(@getChannel(name)?.contains(nick))
 
 		# Override client.mode so it can access channel data
 		oldMode = client.mode
