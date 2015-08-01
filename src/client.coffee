@@ -35,11 +35,6 @@ defaultOpt =
 
 class Client extends EventEmitter2
 	constructor: (opt) ->
-		# Set EventEmitter2 options
-		super
-			wildcard: true
-			delimiter: '::'
-			newListener: false
 		@setMaxListeners 0
 		@_ =
 			numRetries: 0

@@ -3,32 +3,33 @@ Promise = require 'bluebird'
 
 module.exports = ->
 	return (client) ->
-		client.join = (chan, cb) ->
-			if chan instanceof Array
-				if chan.length is 0
+		client.join = (channel, cb) ->
+			if channel instanceof Array
+				if channel.length is 0
 					return
-				@raw "JOIN #{chan.join()}"
-				joinPromises = for c in chan
+				@raw "JOIN #{channel.join()}"
+				joinPromises = for c in channel
 					do (c) =>
 						new Promise (resolve) =>
-							@on ['join', c], ({chan, nick}) ->
+							listener = ({chan, nick}) =>
+								return if chan isnt c
+								@off 'join', listener
 								resolve chan
+							@on 'join', listener
 				return Promise.all(joinPromises).nodeify cb or @cbNoop
 
 			else
 				return new Promise (resolve) =>
-					@raw "JOIN #{chan}"
-					@once ['join', chan], ({chan, nick}) ->
+					@raw "JOIN #{channel}"
+					listener = ({chan, nick}) =>
+						return if chan isnt channel
+						@off 'join', listener
 						resolve chan
+					@on 'join', listener
 				.nodeify cb or @cbNoop
 
 		client.on 'raw', (reply) ->
 			if reply.command is 'JOIN'
 				nick = getSender reply
 				chan = reply.params[0]
-
 				@emit 'join', {chan, nick}
-				@emit ['join', chan], {chan, nick}
-				# Because no one likes case sensitivity
-				if chan.toLowerCase() isnt chan
-					@emit ['join', chan.toLowerCase()], {chan, nick}

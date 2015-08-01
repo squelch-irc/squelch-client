@@ -224,7 +224,7 @@ describe 'Client', ->
 			server.expect 'KICK #persia messenger :THIS IS SPARTA!'
 			.then done
 			.catch done
-			
+
 	describe 'nick', ->
 		it 'with no parameters should return the nick', ->
 			client.nick().should.equal 'PakaluPapito'
@@ -409,7 +409,7 @@ describe 'Client', ->
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry'
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #wizard'
-		
+
 		it 'an array of channels should resolve the promise', (done) ->
 			partPromise = client.part ['#furry', '#wizard']
 			server.expect 'PART #furry,#wizard'

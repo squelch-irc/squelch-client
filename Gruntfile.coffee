@@ -5,7 +5,7 @@ module.exports = (grunt) ->
     grunt.task.loadNpmTasks 'grunt-coffeelint'
 
     grunt.initConfig
-        pkg: 
+        pkg:
             grunt.file.readJSON('package.json')
 
         coffee:
@@ -38,13 +38,13 @@ module.exports = (grunt) ->
                         right: 1
                 no_unnecessary_double_quotes:
                     level: 'warn'
-                
+
 
         mochaTest:
             dist:
                 options:
                     ui: 'bdd'
-                    reporter: 'nyan'
+                    reporter: 'spec'
                     require: 'coffee-script/register'
                 src:
                     'test/*.coffee'

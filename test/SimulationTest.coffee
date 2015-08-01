@@ -273,13 +273,6 @@ describe 'handleReply simulations', ->
 				done()
 			server.reply ':HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy'
 
-		it 'should emit a join::chan event in lowercase', (done) ->
-			client.once 'join::#testchan', async(done) ({chan, nick}) ->
-				chan.should.equal '#testChan'
-				nick.should.equal 'PakaluPapito'
-				done()
-			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com JOIN #testChan'
-
 	describe 'part', ->
 		it 'should remove the user from the channels users', (done) ->
 			client.getChannel('#sexy').users().indexOf('KR').should.not.equal -1
@@ -298,13 +291,6 @@ describe 'handleReply simulations', ->
 				nick.should.equal 'PakaluPapito'
 				should.not.exist client.getChannel('#sexy')
 				done()
-
-		it 'should emit a part::chan event in lowercase', (done) ->
-			client.once 'part::#furry', async(done) ({chan, nick}) ->
-				chan.should.equal '#Furry'
-				nick.should.equal 'PakaluPapito'
-				done()
-			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com PART #Furry'
 
 	describe 'nick', ->
 		it 'should emit a nick event', (done) ->
