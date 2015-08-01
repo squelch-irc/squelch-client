@@ -2,6 +2,7 @@ module.exports = (grunt) ->
 
     grunt.task.loadNpmTasks 'grunt-mocha-test'
     grunt.task.loadNpmTasks 'grunt-contrib-coffee'
+    grunt.task.loadNpmTasks 'grunt-contrib-clean'
     grunt.task.loadNpmTasks 'grunt-coffeelint'
 
     grunt.initConfig
@@ -16,6 +17,9 @@ module.exports = (grunt) ->
                 src: ['**/*.coffee']
                 dest: 'dist/'
                 ext: '.js'
+
+        clean:
+            files: 'dist/'
 
         coffeelint:
             dev:
@@ -53,6 +57,6 @@ module.exports = (grunt) ->
         grunt.log.write msg
 
     grunt.registerTask 'lint', ['coffeelint']
-    grunt.registerTask 'build', ['test', 'coffee:dist']
+    grunt.registerTask 'build', ['test', 'clean', 'coffee:dist']
     grunt.registerTask 'test', ['lint', 'mochaTest']
     grunt.registerTask 'default', ['build']
