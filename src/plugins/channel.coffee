@@ -113,12 +113,15 @@ module.exports = ->
 
 			if reply.command is getReplyCode 'RPL_NOTOPIC'
 				@_.channels[reply.params[1].toLowerCase()]._.topic = ''
+				@emit 'topic', {chan: reply.params[1], topic: ''}
 			if reply.command is getReplyCode 'RPL_TOPIC'
 				@_.channels[reply.params[1].toLowerCase()]._.topic = reply.params[2]
+				@emit 'topic', {chan: reply.params[1], topic: reply.params[2]}
 			if reply.command is getReplyCode 'RPL_TOPIC_WHO_TIME'
 				chan = @_.channels[reply.params[1].toLowerCase()]
 				chan._.topicSetter = reply.params[2]
 				chan._.topicTime = new Date parseInt(reply.params[3])
+				@emit 'topicwho', {chan: reply.params[1], hostmask: chan._.topicSetter, time: chan._.topicTime}
 			if reply.command is getReplyCode 'RPL_NAMREPLY'
 				# TODO: trigger event on name update
 				chan = @_.channels[reply.params[2].toLowerCase()]

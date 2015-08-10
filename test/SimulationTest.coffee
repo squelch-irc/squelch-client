@@ -75,19 +75,6 @@ describe 'handleReply simulations', ->
 
 	afterEach (done) ->
 		cleanUp client, server, done
-		# client.handleReplies [
-		# 	':irc.ircnet.net 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
-		# 	':availo.esper.net 251 PakaluPapito :There are 13 users and 7818 invisible on 11 servers'
-		# 	':availo.esper.net 252 PakaluPapito 35 :IRC Operators online'
-		# 	':availo.esper.net 253 PakaluPapito 1 :unknown connection(s)'
-		# 	':availo.esper.net 254 PakaluPapito 5065 :channels formed'
-		# 	':availo.esper.net 255 PakaluPapito :I have 2166 clients and 1 servers'
-		# 	':availo.esper.net 265 PakaluPapito 2166 5215 :Current local users 2166, max 5215'
-		# 	':availo.esper.net 266 PakaluPapito 7831 9054 :Current global users 7831, max 9054'
-		# 	':availo.esper.net 250 PakaluPapito :Highest connection count: 5216 (5215 clients) (2518758 connections received)'
-
-		# 	'
-		# ]
 
 	it 'should read the iSupport values correctly', ->
 		client._.iSupport['CHANTYPES'] = '#'
@@ -554,3 +541,25 @@ describe 'handleReply simulations', ->
 					done()
 				client.once 'disconnect', ->
 					done()
+
+	describe 'topic', ->
+		it 'should emit topic for NOTOPIC reply', (done) ->
+			client.once 'topic', async(done) ({chan, topic}) ->
+				chan.should.equal '#sexy'
+				topic.should.equal ''
+				done()
+			server.reply ':anarchy.esper.net 331 PakaluPapito #sexy :No topic is set'
+
+		it 'should emit topic for TOPIC reply', (done) ->
+			client.once 'topic', async(done) ({chan, topic}) ->
+				chan.should.equal '#sexy'
+				topic.should.equal 'We must transcend our flesh bodies for the astral plane.'
+				done()
+			server.reply ':anarchy.esper.net 332 PakaluPapito #sexy :We must transcend our flesh bodies for the astral plane.'
+		it 'should emit topicwho for TOPIC_WHO_TIME reply', (done) ->
+			client.once 'topicwho', async(done) ({chan, hostmask, time}) ->
+				chan.should.equal '#sexy'
+				hostmask.should.equal 'KR!~KR@78-72-225-13-no193.business.telia.com'
+				time.getTime().should.equal 1394457068
+				done()
+			server.reply ':availo.esper.net 333 PakaluPapito #sexy KR!~KR@78-72-225-13-no193.business.telia.com 1394457068'
