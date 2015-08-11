@@ -246,16 +246,18 @@ describe 'handleReply simulations', ->
 		it 'should create the channel if it is the client', (done) ->
 			should.not.exist client.getChannel('#gasstation')
 			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com JOIN #gasstation'
-			client.once 'join', async(done) ({chan, nick}) ->
+			client.once 'join', async(done) ({chan, nick, me}) ->
 				chan.should.equal '#gasstation'
 				nick.should.equal 'PakaluPapito'
+				me.should.be.true
 				client.getChannel('#gasstation').should.exist
 				done()
 
 		it 'should emit a join event', (done) ->
-			client.once 'join', async(done) ({chan, nick}) ->
+			client.once 'join', async(done) ({chan, nick, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'HotGurl'
+				me.should.be.false
 				client.getChannel('#sexy').users().indexOf('HotGurl').should.not.equal -1
 				done()
 			server.reply ':HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy'
@@ -264,26 +266,29 @@ describe 'handleReply simulations', ->
 		it 'should remove the user from the channels users', (done) ->
 			client.getChannel('#sexy').users().indexOf('KR').should.not.equal -1
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com PART #sexy'
-			client.once 'part', async(done) ({chan, nick}) ->
+			client.once 'part', async(done) ({chan, nick, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'KR'
+				me.should.be.false
 				done()
 				client.getChannel('#sexy').users().indexOf('KR').should.equal -1
 
 		it 'should remove the channel if the nick is the client', (done) ->
 			client.getChannel('#sexy').should.exist
 			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com PART #sexy'
-			client.once 'part', async(done) ({chan, nick}) ->
+			client.once 'part', async(done) ({chan, nick, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'PakaluPapito'
+				me.should.be.true
 				should.not.exist client.getChannel('#sexy')
 				done()
 
 	describe 'nick', ->
 		it 'should emit a nick event', (done) ->
-			client.once 'nick', async(done) ({oldNick, newNick}) ->
+			client.once 'nick', async(done) ({oldNick, newNick, me}) ->
 				oldNick.should.equal 'KR'
 				newNick.should.equal 'RK'
+				me.should.be.false
 				client.getChannel('#sexy')._.users['RK'].should.equal '@'
 				should.not.exist client.getChannel('#sexy')._.users['KR']
 				done()
@@ -292,7 +297,8 @@ describe 'handleReply simulations', ->
 		it 'should update its own nick', (done) ->
 			client._.nick.should.equal 'PakaluPapito'
 			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com NICK :SteelUrGirl'
-			client.once 'nick', async(done) ({oldNick, newNick}) ->
+			client.once 'nick', async(done) ({oldNick, newNick, me}) ->
+				me.should.be.true
 				client._.nick.should.equal 'SteelUrGirl'
 				done()
 
@@ -307,22 +313,24 @@ describe 'handleReply simulations', ->
 		it 'should remove the user from the channels users', (done) ->
 			client.getChannel('#sexy').users().indexOf('Freek').should.not.equal -1
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #sexy Freek'
-			client.once 'kick', async(done) ({chan, nick, kicker, reason}) ->
+			client.once 'kick', async(done) ({chan, nick, kicker, reason, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'Freek'
 				kicker.should.equal 'KR'
 				should.not.exist reason
+				me.should.be.false
 				client.getChannel('#sexy').users().indexOf('Freek').should.equal -1
 				done()
 
 		it 'should remove the channel if the nick is the client', (done) ->
 			client.getChannel('#sexy').should.exist
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #sexy PakaluPapito :THIS IS SPARTA!'
-			client.once 'kick', async(done) ({chan, nick, kicker, reason}) ->
+			client.once 'kick', async(done) ({chan, nick, kicker, reason, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'PakaluPapito'
 				kicker.should.equal 'KR'
 				reason.should.equal 'THIS IS SPARTA!'
+				me.should.be.true
 				should.not.exist client.getChannel('#sexy')
 				done()
 

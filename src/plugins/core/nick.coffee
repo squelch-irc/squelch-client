@@ -32,10 +32,11 @@ module.exports = ->
 			if reply.command is 'NICK'
 				oldNick = getSender reply
 				newNick = reply.params[0]
-				if oldNick is @nick()
+				me = oldNick is @nick()
+				if me
 					@_.nick = newNick
 
-				@emit 'nick', {oldNick, newNick}
+				@emit 'nick', {oldNick, newNick, me}
 			else if reply.command is getReplyCode 'ERR_NICKNAMEINUSE'
 				if @opt.autoNickChange
 					@_.numRetries++

@@ -18,5 +18,6 @@ module.exports = ->
 				chan = reply.params[0]
 				nick = reply.params[1]
 				reason = reply.params[2]
-						
-				@emit 'kick', {chan, nick, kicker, reason}
+				me = nick is @nick()
+
+				@emit 'kick', {chan, nick, kicker, reason, me}

@@ -32,4 +32,5 @@ module.exports = ->
 			if reply.command is 'JOIN'
 				nick = getSender reply
 				chan = reply.params[0]
-				@emit 'join', {chan, nick}
+				me = nick is @nick()
+				@emit 'join', {chan, nick, me}

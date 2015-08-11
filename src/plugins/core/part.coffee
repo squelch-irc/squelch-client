@@ -37,4 +37,5 @@ module.exports = ->
 				nick = getSender reply
 				chan = reply.params[0]
 				reason = reply.params[1]
-				@emit 'part', {chan, nick, reason}
+				me = nick is @nick()
+				@emit 'part', {chan, nick, reason, me}
