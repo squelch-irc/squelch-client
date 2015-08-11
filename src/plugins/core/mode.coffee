@@ -3,7 +3,7 @@ module.exports = ->
 	return (client) ->
 		client.mode = (chan, modeStr) ->
 			@raw "MODE #{chan} #{modeStr}"
-		
+
 		client.ban = (chan, hostmask) ->
 			@mode chan, "+b #{hostmask}"
 
@@ -51,3 +51,6 @@ module.exports = ->
 						# Ain't no one got time to keep track of user modes
 						@emit '+usermode', {user, mode: c, sender} if adding
 						@emit '-usermode', {user, mode: c, sender} if not adding
+
+				@emit 'mode', {chan, sender, mode: reply.params[1..].join ' '}
+

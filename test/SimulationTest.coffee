@@ -402,6 +402,19 @@ describe 'handleReply simulations', ->
 			]
 
 	describe 'mode', ->
+		it 'should emit a mode event for +o-o with params (prefix mode)', (done) ->
+			client.getChannel('#sexy')._.users['KR'].should.equal '@'
+			client.getChannel('#sexy')._.users['Chase'].should.equal ''
+
+			client.once 'mode', async(done) ({chan, sender, mode}) ->
+				chan.should.equal '#sexy'
+				sender.should.equal 'KR'
+				mode.should.equal '-o+o KR Chase'
+				client.getChannel('#sexy')._.users['KR'].should.equal ''
+				client.getChannel('#sexy')._.users['Chase'].should.equal '@'
+				done()
+			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -o+o KR Chase'
+
 		it 'should emit a +mode event for +n (type D mode)', (done) ->
 			client.once '+mode', async(done) ({chan, sender, mode, param}) ->
 				chan.should.equal '#sexy'
@@ -421,6 +434,24 @@ describe 'handleReply simulations', ->
 				client.getChannel('#sexy')._.users['Freek'].should.equal '@'
 				done()
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy +o Freek'
+
+		it 'should emit a -mode and +mode event for +o-o with params (prefix mode)', (done) ->
+			client.getChannel('#sexy')._.users['KR'].should.equal '@'
+			client.once '-mode', async(done) ({chan, sender, mode, param}) ->
+				chan.should.equal '#sexy'
+				sender.should.equal 'KR'
+				mode.should.equal 'o'
+				param.should.equal 'KR'
+				client.getChannel('#sexy')._.users['KR'].should.equal ''
+				client.getChannel('#sexy')._.users['Chase'].should.equal ''
+				client.once '+mode', async(done) ({chan, sender, mode, param}) ->
+					chan.should.equal '#sexy'
+					sender.should.equal 'KR'
+					mode.should.equal 'o'
+					param.should.equal 'Chase'
+					client.getChannel('#sexy')._.users['Chase'].should.equal '@'
+					done()
+			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -o+o KR Chase'
 
 		it 'should emit a -mode event for -b with param (type A mode)', (done) ->
 			client.once '-mode', async(done) ({chan, sender, mode, param}) ->
