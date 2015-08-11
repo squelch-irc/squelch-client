@@ -52,5 +52,8 @@ module.exports = ->
 						@emit '+usermode', {user, mode: c, sender} if adding
 						@emit '-usermode', {user, mode: c, sender} if not adding
 
-				@emit 'mode', {chan, sender, mode: reply.params[1..].join ' '}
+				if not user?
+					@emit 'mode', {chan, sender, mode: reply.params[1..].join ' '}
+				else
+					@emit 'usermode', {user, sender, mode: reply.params[1..].join ' '}
 

@@ -512,6 +512,13 @@ describe 'handleReply simulations', ->
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -v Kurea'
 
 	describe 'usermode', ->
+		it 'should emit usermode for modes on users', (done) ->
+			client.once 'usermode', async(done) ({user, mode, sender}) ->
+				user.should.equal 'Freek'
+				mode.should.equal '+o'
+				sender.should.equal 'CoolIRCOp'
+				done()
+			server.reply ':CoolIRCOp!~wow@cpe-76-183-227-155.tx.res.rr.com MODE Freek +o'
 		it 'should emit +usermode for modes on users', (done) ->
 			client.once '+usermode', async(done) ({user, mode, sender}) ->
 				user.should.equal 'Freek'
