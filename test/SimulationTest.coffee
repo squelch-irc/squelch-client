@@ -1,3 +1,4 @@
+Promise = require 'bluebird'
 chai = require 'chai'
 {expect} = chai
 should = chai.should()
@@ -151,22 +152,57 @@ describe 'handleReply simulations', ->
 			client._.nick.should.equal 'PakaluPapito'
 
 
-		it 'should emit a connect event with the right nick', (done) ->
+		it 'should emit connect events with the right nick', (done) ->
 			server = new TestServer 6667
 			client = new Client
 				server: 'localhost'
 				nick: 'PakaluPapito'
 				messageDelay: 0
 				autoReconnect: false
+				autoConnect: false
+
 			server.expect [
 				'NICK PakaluPapito'
 				'USER NodeIRCClient 8 * :NodeIRCClient'
 			]
 			.then ->
 				server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
-				client.once 'connect', ({nick}) ->
-					nick.should.equal 'PakaluPapito'
-					done()
+				# Gotta use e b/c it conflicts with test `server`
+			client.once 'connecting', (e) ->
+				e.server.should.equal 'localhost'
+				e.port.should.equal 6667
+				client.once 'connection-established', (e) ->
+
+
+					e.server.should.equal 'localhost'
+					e.port.should.equal 6667
+					client.once 'connect', (e) ->
+
+						e.server.should.equal 'localhost'
+						e.port.should.equal 6667
+						e.nick.should.equal 'PakaluPapito'
+						done()
+			client.connect()
+
+		it 'should reconnect if using multiple tries', (done) ->
+			server = new TestServer 6667
+			client = new Client
+				server: 'localhost'
+				nick: 'PakaluPapito'
+				messageDelay: 0
+				autoReconnect: false
+				autoConnect: false
+				reconnectDelay: 50
+			client.once 'reconnecting', ({server, port, delay, triesLeft}) ->
+				server.should.equal 'localhost'
+				port.should.equal 6667
+				delay.should.equal 50
+				triesLeft.should.equal 1
+				done()
+			client.connect(2)
+			# immediately disconnect
+			client.conn.destroy()
+			client.conn.emit 'error', 'test disconnection'
 
 		it 'should auto join the channels in opt.channels', (done) ->
 			server = new TestServer 6667

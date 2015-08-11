@@ -95,6 +95,9 @@ class Client extends EventEmitter2
 
 	connect: (tries = 1, cb) ->
 		return new Promise (resolve, reject) =>
+			@emit 'connecting',
+				port: @opt.port
+				server: @opt.server
 			@log 'Connecting...'
 			if tries instanceof Function
 				cb = tries
@@ -105,6 +108,11 @@ class Client extends EventEmitter2
 				@logError 'Unable to connect.'
 				@logError err
 				if tries > 0 or tries is -1
+					@emit 'reconnecting',
+						port: @opt.port
+						server: @opt.server
+						delay: @opt.reconnectDelay
+						triesLeft: tries
 					@logError "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
 					setTimeout =>
 						@connect tries, cb
@@ -145,6 +153,11 @@ class Client extends EventEmitter2
 						setTimeout =>
 							@connect @opt.autoReconnectTries
 						, @opt.reconnectDelay
+
+				@emit 'connection-established',
+					port: @opt.port
+					server: @opt.server
+
 				@raw "PASS #{@opt.password}", false if @opt.password?
 				@raw "NICK #{@opt.nick}", false
 				@raw "USER #{@opt.username} 8 * :#{@opt.realname}", false
@@ -287,7 +300,10 @@ class Client extends EventEmitter2
 			when getReplyCode 'RPL_WELCOME'
 				@_.connected = true
 				@_.nick = parsedReply.params[0]
-				@emit 'connect', nick: @_.nick
+				@emit 'connect',
+					nick: @_.nick
+					server: @opt.server
+					port: @opt.port
 				@join @opt.channels
 
 			when getReplyCode 'RPL_YOURHOST'
