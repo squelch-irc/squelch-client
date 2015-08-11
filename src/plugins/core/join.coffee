@@ -13,9 +13,9 @@ module.exports = ->
 						new Promise (resolve) =>
 							listener = ({chan, nick}) =>
 								return if chan isnt c
-								@off 'join', listener
+								client._.internalEmitter.off 'join', listener
 								resolve chan
-							@on 'join', listener
+							@_.internalEmitter.on 'join', listener
 				return Promise.all(joinPromises).nodeify cb or @cbNoop
 
 			else
@@ -23,14 +23,14 @@ module.exports = ->
 					@raw "JOIN #{channel}"
 					listener = ({chan, nick}) =>
 						return if chan isnt channel
-						@off 'join', listener
+						client._.internalEmitter.off 'join', listener
 						resolve chan
-					@on 'join', listener
+					@_.internalEmitter.on 'join', listener
 				.nodeify cb or @cbNoop
 
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'JOIN'
 				nick = getSender reply
 				chan = reply.params[0]
-				me = nick is @nick()
-				@emit 'join', {chan, nick, me}
+				me = nick is client.nick()
+				client.emit 'join', {chan, nick, me}

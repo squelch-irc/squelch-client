@@ -109,74 +109,74 @@ module.exports = ->
 			return @_.channels[chan.toLowerCase()].mode() if not modeStr?
 			oldMode chan, modeStr
 
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 
 			if reply.command is getReplyCode 'RPL_NOTOPIC'
-				@_.channels[reply.params[1].toLowerCase()]._.topic = ''
-				@emit 'topic', {chan: reply.params[1], topic: ''}
+				client._.channels[reply.params[1].toLowerCase()]._.topic = ''
+				client.emit 'topic', {chan: reply.params[1], topic: ''}
 			if reply.command is getReplyCode 'RPL_TOPIC'
-				@_.channels[reply.params[1].toLowerCase()]._.topic = reply.params[2]
-				@emit 'topic', {chan: reply.params[1], topic: reply.params[2]}
+				client._.channels[reply.params[1].toLowerCase()]._.topic = reply.params[2]
+				client.emit 'topic', {chan: reply.params[1], topic: reply.params[2]}
 			if reply.command is getReplyCode 'RPL_TOPIC_WHO_TIME'
-				chan = @_.channels[reply.params[1].toLowerCase()]
+				chan = client._.channels[reply.params[1].toLowerCase()]
 				chan._.topicSetter = reply.params[2]
 				chan._.topicTime = new Date parseInt(reply.params[3])
-				@emit 'topicwho', {chan: reply.params[1], hostmask: chan._.topicSetter, time: chan._.topicTime}
+				client.emit 'topicwho', {chan: reply.params[1], hostmask: chan._.topicSetter, time: chan._.topicTime}
 			if reply.command is getReplyCode 'RPL_NAMREPLY'
 				# TODO: trigger event on name update
-				chan = @_.channels[reply.params[2].toLowerCase()]
+				chan = client._.channels[reply.params[2].toLowerCase()]
 				return if not chan?
 				names = reply.params[3].split ' '
 				for name in names
-					if @_.reversePrefix[name[0]]?
+					if client._.reversePrefix[name[0]]?
 						chan._.users[name[1..]] = name[0]
 					else
 						chan._.users[name] = ''
 			if reply.command is getReplyCode 'RPL_ENDOFNAMES'
 				chan = reply.params[1]
-				@emit 'names', {chan}
+				client.emit 'names', {chan}
 
-		client.on 'nick', ({oldNick, newNick}) ->
-			for name, chan of @_.channels
+		client._.internalEmitter.on 'nick', ({oldNick, newNick}) ->
+			for name, chan of client._.channels
 				if chan._.users[oldNick]?
 					chan._.users[newNick] = chan._.users[oldNick]
 					delete chan._.users[oldNick]
 
-		client.on 'join', ({chan, nick}) ->
-			if nick is @_.nick
-				@_.channels[chan.toLowerCase()] = new Channel @, chan
+		client._.internalEmitter.on 'join', ({chan, nick}) ->
+			if nick is client._.nick
+				client._.channels[chan.toLowerCase()] = new Channel client, chan
 			else
-				@_.channels[chan.toLowerCase()]._.users[nick] = ''
+				client._.channels[chan.toLowerCase()]._.users[nick] = ''
 
-		client.on 'part', ({chan, nick}) ->
-			if nick is @_.nick
-				delete @_.channels[chan.toLowerCase()]
+		client._.internalEmitter.on 'part', ({chan, nick}) ->
+			if nick is client._.nick
+				delete client._.channels[chan.toLowerCase()]
 			else
-				users = @_.channels[chan.toLowerCase()]._.users
+				users = client._.channels[chan.toLowerCase()]._.users
 				delete users[nick]
 
-		client.on 'kick', ({chan, nick}) ->
-			if nick is @_.nick
-				delete @_.channels[chan.toLowerCase()]
-				@raw "JOIN #{chan}" if @opt.autoRejoin
+		client._.internalEmitter.on 'kick', ({chan, nick}) ->
+			if nick is client._.nick
+				delete client._.channels[chan.toLowerCase()]
+				client.raw "JOIN #{chan}" if client.opt.autoRejoin
 			else
-				delete @_.channels[chan.toLowerCase()]._.users[nick]
+				delete client._.channels[chan.toLowerCase()]._.users[nick]
 
-		client.on 'quit', ({nick}) ->
-			for name, chan of @_.channels
+		client._.internalEmitter.on 'quit', ({nick}) ->
+			for name, chan of client._.channels
 				delete chan._.users[nick]
 
-		client.on '+mode', ({chan, sender, mode, param}) ->
-			if @_.prefix[mode]? # Update user's mode in channel
-				@_.channels[chan.toLowerCase()]._.users[param] = @_.prefix[mode]
+		client._.internalEmitter.on '+mode', ({chan, sender, mode, param}) ->
+			if client._.prefix[mode]? # Update user's mode in channel
+				client._.channels[chan.toLowerCase()]._.users[param] = client._.prefix[mode]
 			else # Update channel mode
-				channelModes = @_.channels[chan.toLowerCase()]._.mode
+				channelModes = client._.channels[chan.toLowerCase()]._.mode
 				channelModes.push mode
 
-		client.on '-mode', ({chan, sender, mode, param}) ->
-			if @_.prefix[mode]? # Update user's mode in channel
-				@_.channels[chan.toLowerCase()]._.users[param] = ''
+		client._.internalEmitter.on '-mode', ({chan, sender, mode, param}) ->
+			if client._.prefix[mode]? # Update user's mode in channel
+				client._.channels[chan.toLowerCase()]._.users[param] = ''
 			else # Update channel mode
-				channelModes = @_.channels[chan.toLowerCase()]._.mode
+				channelModes = client._.channels[chan.toLowerCase()]._.mode
 				index = channelModes.indexOf mode
 				channelModes[index..index] = [] if index isnt -1

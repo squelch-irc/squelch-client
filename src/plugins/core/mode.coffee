@@ -22,11 +22,11 @@ module.exports = ->
 		client.devoice = (chan, user) ->
 			@mode chan, "-v #{user}"
 
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'MODE'
 				sender = getSender reply
 				chan = reply.params[0]
-				user = chan if not @isChannel(chan)
+				user = chan if not client.isChannel(chan)
 				modes = reply.params[1]
 				params = reply.params[2..] if reply.params.length > 2
 				adding = true
@@ -40,20 +40,20 @@ module.exports = ->
 					if not user? # We're dealin with a real deal channel mode
 						param = undefined
 						# Cases where mode has param
-						if @_.chanmodes[0].indexOf(c) isnt -1 or
-						@_.chanmodes[1].indexOf(c) isnt -1 or
-						(adding and @_.chanmodes[2].indexOf(c) isnt -1) or
-						@_.prefix[c]?
+						if client._.chanmodes[0].indexOf(c) isnt -1 or
+						client._.chanmodes[1].indexOf(c) isnt -1 or
+						(adding and client._.chanmodes[2].indexOf(c) isnt -1) or
+						client._.prefix[c]?
 							param = params.shift()
-						@emit '+mode', {chan, sender, mode: c, param} if adding
-						@emit '-mode', {chan, sender, mode: c, param} if not adding
+						client.emit '+mode', {chan, sender, mode: c, param} if adding
+						client.emit '-mode', {chan, sender, mode: c, param} if not adding
 					else # We're dealing with some stupid user mode
 						# Ain't no one got time to keep track of user modes
-						@emit '+usermode', {user, mode: c, sender} if adding
-						@emit '-usermode', {user, mode: c, sender} if not adding
+						client.emit '+usermode', {user, mode: c, sender} if adding
+						client.emit '-usermode', {user, mode: c, sender} if not adding
 
 				if not user?
-					@emit 'mode', {chan, sender, mode: reply.params[1..].join ' '}
+					client.emit 'mode', {chan, sender, mode: reply.params[1..].join ' '}
 				else
-					@emit 'usermode', {user, sender, mode: reply.params[1..].join ' '}
+					client.emit 'usermode', {user, sender, mode: reply.params[1..].join ' '}
 

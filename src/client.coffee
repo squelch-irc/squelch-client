@@ -35,8 +35,8 @@ defaultOpt =
 
 class Client extends EventEmitter2
 	constructor: (opt) ->
-		@setMaxListeners 0
 		@_ =
+			internalEmitter: new EventEmitter2()
 			numRetries: 0
 			connected: false
 			disconnecting: false
@@ -48,6 +48,8 @@ class Client extends EventEmitter2
 				o: '@'
 				v: '+'
 			chanmodes: ['beI', 'k', 'l', 'aimnpqsrt']
+		@setMaxListeners 0
+		@_.internalEmitter.setMaxListeners 0
 		if not opt?
 			throw new Error 'No options argument given.'
 		if typeof opt is 'string'
@@ -72,6 +74,14 @@ class Client extends EventEmitter2
 
 		if @opt.autoConnect
 			@connect()
+
+	# Emits to internalEmitter first, then the client itself.
+	# This is to give core plugin listeners priority over
+	# external listeners.
+	# NOTE: internalEmitter won't receive error events
+	emit: (args...) ->
+		@_.internalEmitter.emit args... if args[0] isnt 'error'
+		super args...
 
 	# Logs to console if verbose is enabled.
 	log: (msg) -> console.log msg if @opt.verbose
@@ -104,7 +114,7 @@ class Client extends EventEmitter2
 			onConnect = =>
 				@conn.setEncoding 'utf8'
 				@conn.removeListener 'error', errorListener
-				@once 'connect', ({nick}) ->
+				@_.internalEmitter.once 'connect', ({nick}) ->
 					resolve {nick}
 				@log 'Connected'
 				stream = @conn
@@ -168,7 +178,7 @@ class Client extends EventEmitter2
 				@raw "QUIT :#{reason}", false
 			else
 				@raw 'QUIT', false
-			@once 'disconnect', ->
+			@_.internalEmitter.once 'disconnect', ->
 				resolve()
 		.nodeify cb or @cbNoop
 
@@ -205,14 +215,14 @@ class Client extends EventEmitter2
 	# Include the target in the command
 	splitText: (command, msg, extra = 0) ->
 		limit = 512 -
-			3 - 					# :!@
-			@_.nick.length - 		# nick of hostmask
-			9 - 					# max username
-			65 - 					# max hostname
-			command.length - 		# command
-			2 - 					# ' :' before msg
-			2 -						# /r/n
-			extra					# any extra space requested
+			3 -                     # :!@
+			@_.nick.length -        # nick of hostmask
+			9 -                     # max username
+			65 -                    # max hostname
+			command.length -        # command
+			2 -                     # ' :' before msg
+			2 -                     # /r/n
+			extra                   # any extra space requested
 		return (msg.slice(i, i+limit) for i in [0..msg.length] by limit)
 
 	use: (plugin) ->

@@ -15,31 +15,31 @@ module.exports = ->
 					if 431 <= parseInt(msg.command) <= 436 # irc errors for nicks
 						removeListeners()
 						# Don't error while we're still trying to connect
-						if @isConnected()
+						if client.isConnected()
 							reject msg
 
 				removeListeners = =>
-					@removeListener 'raw', errListener
-					@removeListener 'nick', nickListener
+					client._.internalEmitter.off 'raw', errListener
+					client._.internalEmitter.off 'nick', nickListener
 
-				@on 'nick', nickListener
-				@on 'raw', errListener
+				@_.internalEmitter.on 'nick', nickListener
+				@_.internalEmitter.on 'raw', errListener
 
 				@raw "NICK #{desiredNick}"
 			.nodeify cb or @cbNoop
 
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'NICK'
 				oldNick = getSender reply
 				newNick = reply.params[0]
-				me = oldNick is @nick()
+				me = oldNick is client.nick()
 				if me
-					@_.nick = newNick
+					client._.nick = newNick
 
-				@emit 'nick', {oldNick, newNick, me}
+				client.emit 'nick', {oldNick, newNick, me}
 			else if reply.command is getReplyCode 'ERR_NICKNAMEINUSE'
-				if @opt.autoNickChange
-					@_.numRetries++
-					@nick @opt.nick + @_.numRetries
+				if client.opt.autoNickChange
+					client._.numRetries++
+					client.nick client.opt.nick + client._.numRetries
 				else
-					@disconnect()
+					client.disconnect()

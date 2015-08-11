@@ -12,12 +12,12 @@ module.exports = ->
 				for u in users
 					@raw "KICK #{c} #{u}#{reason}"
 
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'KICK'
 				kicker = getSender reply
 				chan = reply.params[0]
 				nick = reply.params[1]
 				reason = reply.params[2]
-				me = nick is @nick()
+				me = nick is client.nick()
 
-				@emit 'kick', {chan, nick, kicker, reason, me}
+				client.emit 'kick', {chan, nick, kicker, reason, me}

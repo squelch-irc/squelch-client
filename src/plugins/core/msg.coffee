@@ -13,12 +13,12 @@ module.exports = ->
 			else
 				@msg target, "\x01ACTION #{msg}\x01"
 
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'PRIVMSG'
 				from = getSender reply
 				to = reply.params[0]
 				msg = reply.params[1]
 				if msg.lastIndexOf('\u0001ACTION', 0) is 0 # startsWith
-					@emit 'action', {from, to, msg: msg.substring(8, msg.length-1)}
+					client.emit 'action', {from, to, msg: msg.substring(8, msg.length-1)}
 				else
-					@emit 'msg', {from, to, msg}
+					client.emit 'msg', {from, to, msg}

@@ -18,9 +18,9 @@ module.exports = ->
 						new Promise (resolve) =>
 							listener = ({chan, nick}) =>
 								return if chan isnt c
-								@off 'part', listener
+								client._.internalEmitter.off 'part', listener
 								resolve chan
-							@on 'part', listener
+							@_.internalEmitter.on 'part', listener
 				return Promise.all(partPromises).nodeify cb or @cbNoop
 
 			else
@@ -28,14 +28,14 @@ module.exports = ->
 					@raw "PART #{channel+reason}"
 					listener = ({chan, nick}) ->
 						return if chan isnt channel
-						@off 'part', listener
+						client._.internalEmitter.off 'part', listener
 						resolve chan
-					@once 'part', listener
+					@_.internalEmitter.once 'part', listener
 				.nodeify cb or @cbNoop
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'PART'
 				nick = getSender reply
 				chan = reply.params[0]
 				reason = reply.params[1]
-				me = nick is @nick()
-				@emit 'part', {chan, nick, reason, me}
+				me = nick is client.nick()
+				client.emit 'part', {chan, nick, reason, me}

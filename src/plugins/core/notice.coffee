@@ -7,9 +7,9 @@ module.exports = ->
 			else
 				@raw "NOTICE #{target} :#{msg}"
 
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'NOTICE'
 				from = getSender reply
 				to = reply.params[0]
 				msg = reply.params[1]
-				@emit 'notice', {from, to, msg}
+				client.emit 'notice', {from, to, msg}

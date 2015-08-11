@@ -4,8 +4,8 @@ module.exports = ->
 		client.invite = (nick, chan) ->
 			@raw "INVITE #{nick} #{chan}"
 
-		client.on 'raw', (reply) ->
+		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'INVITE'
 				from = getSender reply
 				chan = reply.params[1]
-				@emit 'invite', {from, chan}
+				client.emit 'invite', {from, chan}
