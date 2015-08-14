@@ -296,7 +296,7 @@ class Client extends EventEmitter2
 						@connect @opt.autoReconnectTries
 					, @opt.reconnectDelay
 				@_.disconnecting = false
-				@emit 'disconnect'
+				@emit 'disconnect', {}
 			when getReplyCode 'RPL_WELCOME'
 				@_.connected = true
 				@_.nick = parsedReply.params[0]
