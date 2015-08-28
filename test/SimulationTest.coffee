@@ -374,10 +374,12 @@ describe 'handleReply simulations', ->
 		it 'should remove the user from the channels they are in', (done) ->
 			client.getChannel('#sexy').users().indexOf('Chase').should.not.equal -1
 			server.reply ':Chase!kalt@millennium.stealth.net QUIT :Choke on it.'
-			client.once 'quit', async(done) ({nick, reason}) ->
+			client.once 'quit', async(done) ({nick, reason, channels}) ->
 				client.getChannel('#sexy').users().indexOf('Chase').should.equal -1
 				nick.should.equal 'Chase'
 				reason.should.equal 'Choke on it.'
+				channels.length.should.equal 1
+				channels[0].should.equal '#sexy'
 				done()
 
 	describe 'msg', ->

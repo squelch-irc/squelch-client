@@ -162,9 +162,13 @@ module.exports = ->
 			else
 				delete client._.channels[chan.toLowerCase()]._.users[nick]
 
-		client._.internalEmitter.on 'quit', ({nick}) ->
-			for name, chan of client._.channels
+		client._.internalEmitter.on 'quit', (e) ->
+			{nick} = e
+			leftChannels = []
+			for name, chan of client._.channels when chan._.users[nick]?
+				leftChannels.push chan.name()
 				delete chan._.users[nick]
+			e.channels = leftChannels
 
 		client._.internalEmitter.on '+mode', ({chan, sender, mode, param}) ->
 			if client._.prefix[mode]? # Update user's mode in channel
