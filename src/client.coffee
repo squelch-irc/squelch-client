@@ -7,6 +7,9 @@ Promise = require 'bluebird'
 streamMap = require 'through2-map'
 color = require 'irc-colors'
 
+debug = require('debug')('squelch-client')
+debugError = require('debug')('squelch-client:error')
+
 {getSender} = require './util'
 {getReplyCode, getReplyName} = require './replies'
 
@@ -15,8 +18,6 @@ defaultOpt =
 	nick: "NodeIRCClient"
 	username: "NodeIRCClient"
 	realname: "NodeIRCClient"
-	verbose: false
-	verboseError: true
 	channels: []
 	autoNickChange: true
 	autoRejoin: false
@@ -83,37 +84,31 @@ class Client extends EventEmitter2
 		@_.internalEmitter.emit args... if args[0] isnt 'error'
 		super args...
 
-	# Logs to console if verbose is enabled.
-	log: (msg) -> console.log msg if @opt.verbose
-
-	# Logs to standard error if verbose is enabled.
-	logError: (msg) -> console.error msg if @opt.verboseError
-
 	# Default callback when callback isn't specified to a function.
 	# By default it will log the error to console if this bot is
-	cbNoop: (err) => @logError err if err
+	cbNoop: (err) => debugError err if err
 
 	connect: (tries = 1, cb) ->
 		return new Promise (resolve, reject) =>
 			@emit 'connecting',
 				port: @opt.port
 				server: @opt.server
-			@log 'Connecting...'
+			debug 'Connecting...'
 			if tries instanceof Function
 				cb = tries
 				tries = 1
 			tries--
 
 			errorListener = (err) =>
-				@logError 'Unable to connect.'
-				@logError err
+				debugError 'Unable to connect.'
+				debugError err
 				if tries > 0 or tries is -1
 					@emit 'reconnecting',
 						port: @opt.port
 						server: @opt.server
 						delay: @opt.reconnectDelay
 						triesLeft: tries
-					@logError "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
+					debugError "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
 					setTimeout =>
 						@connect tries, cb
 					, @opt.reconnectDelay
@@ -124,7 +119,7 @@ class Client extends EventEmitter2
 				@conn.removeListener 'error', errorListener
 				@_.internalEmitter.once 'connect', ({nick}) ->
 					resolve {nick}
-				@log 'Connected'
+				debug 'Connected'
 				stream = @conn
 				if @opt.stripColors
 					stream = stream.pipe streamMap wantStrings: true, color.stripColors
@@ -147,9 +142,9 @@ class Client extends EventEmitter2
 						@emit 'raw', data
 
 				@conn.on 'error', (e) =>
-					@logError 'Disconnected by network error.'
+					debugError 'Disconnected by network error.'
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
-						@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
+						debug "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
 						setTimeout =>
 							@connect @opt.autoReconnectTries
 						, @opt.reconnectDelay
@@ -169,11 +164,11 @@ class Client extends EventEmitter2
 						if @opt.selfSigned and (@conn.authorizationError is 'DEPTH_ZERO_SELF_SIGNED_CERT' or
 											@conn.authorizationError is 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' or
 											@conn.authorizationError is 'SELF_SIGNED_CERT_IN_CHAIN')
-							@log 'Connecting to server with self signed certificate'
+							debug 'Connecting to server with self signed certificate'
 						else if @opt.certificateExpired and @conn.authorizationError is 'CERT_HAS_EXPIRED'
-							@log 'Connecting to server with expired certificate'
+							debug 'Connecting to server with expired certificate'
 						else
-							@log "Authorization error: #{@conn.authorizationError}"
+							debug "Authorization error: #{@conn.authorizationError}"
 							return
 					onConnect()
 			else
@@ -210,7 +205,7 @@ class Client extends EventEmitter2
 		if not @conn?
 			return
 		if not delay or @opt.messageDelay is 0
-			@log "-> #{msg}"
+			debug "-> #{msg}"
 			@conn.write msg + '\r\n'
 		else
 			setTimeout @dequeue, 0 if @_.messageQueue.length is 0
@@ -220,7 +215,7 @@ class Client extends EventEmitter2
 	dequeue: () =>
 		msg = @_.messageQueue.shift()
 		if @conn?
-			@log "-> #{msg}"
+			debug "-> #{msg}"
 			@conn.write msg + '\r\n'
 		@_.messageQueueTimeout = setTimeout @dequeue, @opt.messageDelay if @_.messageQueue.length isnt 0
 
@@ -245,14 +240,6 @@ class Client extends EventEmitter2
 
 	isConnected: -> return @_.connected
 
-	verbose: (enabled) ->
-		return @opt.verbose if not enabled?
-		@opt.verbose = enabled
-
-	verboseError: (enabled) ->
-		return @opt.verboseError if not enabled?
-		@opt.verboseError = enabled
-
 	messageDelay: (value) ->
 		return @opt.messageDelay if not value?
 		@opt.messageDelay = value
@@ -272,7 +259,7 @@ class Client extends EventEmitter2
 	handleReply: (parsedReply) ->
 		if not parsedReply?
 			return
-		@log '<-' + parsedReply.raw
+		debug '<-' + parsedReply.raw
 		switch parsedReply.command
 			when 'QUIT'
 				nick = getSender parsedReply
@@ -289,9 +276,9 @@ class Client extends EventEmitter2
 				@conn = null
 				@_.connected = false
 				@emit 'error', parsedReply if not @_.disconnecting
-				@log 'Disconnected from server'
+				debug 'Disconnected from server'
 				if not @_.disconnecting and @opt.autoReconnect and @opt.autoReconnectTries > 0
-					@log "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
+					debug "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
 					setTimeout =>
 						@connect @opt.autoReconnectTries
 					, @opt.reconnectDelay

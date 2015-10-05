@@ -10,6 +10,7 @@
   "main": "dist/client.js",
   "dependencies": {
     "bluebird": "^2.9.30",
+    "debug": "^2.2.0",
     "eventemitter2": "^0.4.14",
     "irc-colors": "^1.2.0",
     "irc-message": "~3.0.0",

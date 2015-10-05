@@ -39,7 +39,6 @@ describe 'handleReply simulations', ->
 			messageDelay: 0
 			autoReconnect: false
 			autoConnect: false
-			verbose: false
 		connectPromise = client.connect()
 		server.expect [
 			'NICK PakaluPapito'
@@ -255,7 +254,6 @@ describe 'handleReply simulations', ->
 				messageDelay: 0
 				autoReconnect: false
 				autoConnect: true
-				verbose: false
 				channels: ['#sexy', '#Furry']
 			server.expect [
 				'NICK PakaluPapito'

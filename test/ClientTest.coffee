@@ -40,7 +40,6 @@ describe 'Client', ->
 			messageDelay: 0
 			autoReconnect: false
 			autoConnect: false
-			verbose: false
 			port: 6667
 		connectPromise = client.connect()
 		server.expect [
@@ -146,7 +145,6 @@ describe 'Client', ->
 				messageDelay: 0
 				autoReconnect: false
 				autoConnect: false
-				verbose: false
 			client.isConnected().should.be.false
 			client.connect()
 			server.expect [
@@ -158,30 +156,6 @@ describe 'Client', ->
 					client.isConnected().should.be.true
 					done()
 				server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
-
-	describe 'verbose', ->
-		it 'should return the right value', ->
-			client.verbose().should.be.false
-			client.opt.verbose.should.be.false
-		it 'should set the right value', ->
-			client.verbose true
-			client.verbose().should.be.true
-			client.opt.verbose.should.be.true
-			client.verbose false
-			client.verbose().should.be.false
-			client.opt.verbose.should.be.false
-
-	describe 'verboseError', ->
-		it 'should return the right value', ->
-			client.verboseError().should.be.true
-			client.opt.verboseError.should.be.true
-		it 'should set the right value', ->
-			client.verboseError true
-			client.verboseError().should.be.true
-			client.opt.verboseError.should.be.true
-			client.verboseError false
-			client.verboseError().should.be.false
-			client.opt.verboseError.should.be.false
 
 	describe 'autoRejoin', ->
 		it 'should send a join command after a KICK', (done) ->
@@ -458,8 +432,6 @@ describe 'Client', ->
 				messageDelay: 0
 				autoReconnect: false
 				autoConnect: false
-				verbose: false
-				verboseError: false
 				ssl: true
 				selfSigned: false
 				port: 6697
