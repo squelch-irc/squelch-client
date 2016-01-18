@@ -107,7 +107,7 @@ module.exports = ->
 		oldMode = client.mode
 		client.mode = (chan, modeStr) ->
 			return @_.channels[chan.toLowerCase()].mode() if not modeStr?
-			oldMode chan, modeStr
+			oldMode.call client, chan, modeStr
 
 		client._.internalEmitter.on 'raw', (reply) ->
 
