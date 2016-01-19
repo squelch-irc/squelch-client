@@ -36,8 +36,3 @@ client.connect()
 By default, squelch-client does not output anything to the console. If you wish to see debug output, run node with the `DEBUG` environment variable set to `squelch-client:*`. To only output errors, use `squelch-client:error`.
 
 `$ DEBUG=squelch-client:* node main.js`
-
-## Running tests
-
-Grunt is used to run the tests. Clone the repo and run `npm install` and `npm install -g grunt-cli` for dependencies. Then to run the tests, run `grunt test`.
-
