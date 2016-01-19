@@ -20,6 +20,7 @@ async = (done) ->
 
 cleanUp = (client, server, done) ->
 	if client.isConnected()
+		server.clientQuitting() # warn server to ignore ECONNREST errors
 		client.forceQuit()
 		server.expect 'QUIT'
 	server.close()
@@ -184,7 +185,7 @@ describe 'handleReply simulations', ->
 			client.connect()
 
 		it 'should reconnect if using multiple tries', (done) ->
-			server = new TestServer 6667
+			server = testServer = new TestServer 6667
 			client = new Client
 				server: 'localhost'
 				nick: 'PakaluPapito'
@@ -197,7 +198,14 @@ describe 'handleReply simulations', ->
 				port.should.equal 6667
 				delay.should.equal 50
 				triesLeft.should.equal 1
-				done()
+				testServer.expect [
+					'NICK PakaluPapito'
+					'USER NodeIRCClient 8 * :NodeIRCClient'
+				]
+				.then ->
+					testServer.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
+				client.once 'connect', -> done()
+				
 			client.connect(2)
 			# immediately disconnect
 			client.conn.destroy()
@@ -253,7 +261,6 @@ describe 'handleReply simulations', ->
 				nick: 'PakaluPapito'
 				messageDelay: 0
 				autoReconnect: false
-				autoConnect: true
 				channels: ['#sexy', '#Furry']
 			server.expect [
 				'NICK PakaluPapito'
@@ -288,13 +295,13 @@ describe 'handleReply simulations', ->
 				done()
 
 		it 'should emit a join event', (done) ->
+			server.reply ':HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy'
 			client.once 'join', async(done) ({chan, nick, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'HotGurl'
 				me.should.be.false
 				client.getChannel('#sexy').users().indexOf('HotGurl').should.not.equal -1
 				done()
-			server.reply ':HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy'
 
 	describe 'part', ->
 		it 'should remove the user from the channels users', (done) ->
@@ -579,26 +586,26 @@ describe 'handleReply simulations', ->
 				done()
 			server.reply ':CoolIRCOp!~wow@cpe-76-183-227-155.tx.res.rr.com MODE Freek -o'
 
-	describe.skip 'timeout', ->
+	describe 'timeout', ->
 		lastReplyTime = null
 		beforeEach (done) ->
-			cleanUp client, server, done
-			server = new TestServer 6667
-			client = new Client
-				server: 'localhost'
-				nick: 'PakaluPapito'
-				messageDelay: 0
-				autoReconnect: false
-				timeout: 500 # Just large enough to run tests
-			server.expect [
-				'NICK PakaluPapito'
-				'USER NodeIRCClient 8 * :NodeIRCClient'
-			]
-			.then ->
-				server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
-				lastReplyTime = (new Date()).getTime()
-				client.once 'connect', ({nick}) ->
-					done()
+			cleanUp client, server, ->
+				server = new TestServer 6667
+				client = new Client
+					server: 'localhost'
+					nick: 'PakaluPapito'
+					messageDelay: 0
+					autoReconnect: false
+					timeout: 500 # Just large enough to run tests
+				server.expect [
+					'NICK PakaluPapito'
+					'USER NodeIRCClient 8 * :NodeIRCClient'
+				]
+				.then ->
+					server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
+					lastReplyTime = (new Date()).getTime()
+					client.once 'connect', ({nick}) ->
+						done()
 		it 'should send a PING to the server after a timeout', (done) ->
 			server.expect 'PING :ruthere'
 			.then ->
