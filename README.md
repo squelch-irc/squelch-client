@@ -1,4 +1,4 @@
-# squelch-client
+# squelch-client [![Build Status](https://travis-ci.org/squelch-irc/squelch-client.svg?branch=master)](https://travis-ci.org/squelch-irc/squelch-client)
 
 
 An IRC Client for Node.js written in CoffeeScript, used in the Squelch IRC client.
