@@ -11,7 +11,7 @@ module.exports = ->
 				joinPromises = for c in channel
 					do (c) =>
 						new Promise (resolve) =>
-							listener = ({chan, nick}) =>
+							listener = ({chan, nick}) ->
 								return if chan isnt c
 								client._.internalEmitter.off 'join', listener
 								resolve chan
@@ -21,7 +21,7 @@ module.exports = ->
 			else
 				return new Promise (resolve) =>
 					@raw "JOIN #{channel}"
-					listener = ({chan, nick}) =>
+					listener = ({chan, nick}) ->
 						return if chan isnt channel
 						client._.internalEmitter.off 'join', listener
 						resolve chan

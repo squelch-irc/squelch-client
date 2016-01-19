@@ -15,9 +15,9 @@ debugError = require('debug')('squelch-client:error')
 
 defaultOpt =
 	port: 6667
-	nick: "NodeIRCClient"
-	username: "NodeIRCClient"
-	realname: "NodeIRCClient"
+	nick: 'NodeIRCClient'
+	username: 'NodeIRCClient'
+	realname: 'NodeIRCClient'
 	channels: []
 	autoNickChange: true
 	autoRejoin: false
@@ -86,7 +86,7 @@ class Client extends EventEmitter2
 
 	# Default callback when callback isn't specified to a function.
 	# By default it will log the error to console if this bot is
-	cbNoop: (err) => debugError err if err
+	cbNoop: (err) -> debugError err if err
 
 	connect: (tries = 1, cb) ->
 		return new Promise (resolve, reject) =>

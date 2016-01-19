@@ -16,7 +16,7 @@ module.exports = ->
 				partPromises = for c in channel
 					do (c) =>
 						new Promise (resolve) =>
-							listener = ({chan, nick}) =>
+							listener = ({chan, nick}) ->
 								return if chan isnt c
 								client._.internalEmitter.off 'part', listener
 								resolve chan

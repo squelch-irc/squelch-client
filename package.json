@@ -21,18 +21,18 @@
   "devDependencies": {
     "chai": "~1.9.0",
     "coffee-script": "~1.7.1",
-    "grunt": "~0.4.2",
-    "grunt-coffeelint": "0.0.8",
-    "grunt-contrib-clean": "^0.6.0",
-    "grunt-contrib-coffee": "~0.7.0",
-    "grunt-mocha-test": "~0.8.1",
-    "mocha": "~1.17.1"
+    "coffeelint": "^1.14.2",
+    "mocha": "~1.17.1",
+    "rimraf": "^2.5.0"
   },
   "scripts": {
-    "test": "grunt test",
-    "doc": "grunt docs",
-    "build": "grunt build",
-    "prepublish": "grunt build"
+    "clean": "rimraf dist",
+    "lint": "coffeelint src test",
+    "pretest": "npm run lint",
+    "test": "mocha --compilers coffee:coffee-script/register test",
+    "prebuild": "npm run clean && npm run test",
+    "build": "coffee -c -o dist src",
+    "prepublish": "npm run build"
   },
   "keywords": [
     "Internet Relay Chat",

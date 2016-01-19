@@ -18,7 +18,7 @@ module.exports = ->
 						if client.isConnected()
 							reject msg
 
-				removeListeners = =>
+				removeListeners = ->
 					client._.internalEmitter.off 'raw', errListener
 					client._.internalEmitter.off 'nick', nickListener
 

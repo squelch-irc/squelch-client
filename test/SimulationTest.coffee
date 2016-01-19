@@ -15,8 +15,8 @@ asyncFunc param, param, async(done) (err, data) ->
 ###
 async = (done) ->
 	(callback) -> (args...) ->
-			try callback args...
-			catch e then done e
+		try callback args...
+		catch e then done e
 
 cleanUp = (client, server, done) ->
 	if client.isConnected()
