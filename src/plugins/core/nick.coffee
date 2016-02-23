@@ -38,6 +38,8 @@ module.exports = ->
 
 				client.emit 'nick', {oldNick, newNick, me}
 			else if reply.command is getReplyCode 'ERR_NICKNAMEINUSE'
+				return if client.isConnected()
+				
 				if client.opt.autoNickChange
 					client._.numRetries++
 					client.nick client.opt.nick + client._.numRetries

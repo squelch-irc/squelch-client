@@ -4,6 +4,7 @@ should = chai.should()
 
 Client = require '../src/client'
 TestServer = require './TestServer'
+{getReplyCode} = require '../src/replies'
 
 ###
 Thank you KR https://gist.github.com/raymond-h/709801d9f3816ff8f157#file-test-util-coffee
@@ -238,7 +239,17 @@ describe 'Client', ->
 				e.oldNick.should.equal 'PakaluPapito'
 				e.newNick.should.equal 'PricklyPear'
 				done()
+		it 'should not auto nick change while connected', (done) ->
+			client.nick 'bloodninja', async(done) (err, e) ->
+				err.command.should.equal '433'
+				should.not.exist e
+			server.expect 'NICK bloodninja'
+			.then ->
+				server.reply ':irc.ircnet.net 433 * bloodninja :Nickname is already in use.'
 
+			client.on 'raw', (reply) ->
+				if reply.command is getReplyCode 'ERR_NICKNAMEINUSE'
+					setImmediate done
 
 
 	describe 'msg', ->
