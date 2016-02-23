@@ -171,17 +171,17 @@ describe 'handleReply simulations', ->
 			client.once 'connecting', (e) ->
 				e.server.should.equal 'localhost'
 				e.port.should.equal 6667
+
 				client.once 'connection-established', (e) ->
-
-
 					e.server.should.equal 'localhost'
 					e.port.should.equal 6667
-					client.once 'connect', (e) ->
 
+					client.once 'connect', (e) ->
 						e.server.should.equal 'localhost'
 						e.port.should.equal 6667
 						e.nick.should.equal 'PakaluPapito'
 						done()
+
 			client.connect()
 
 		it 'should reconnect if using multiple tries', (done) ->
@@ -205,7 +205,7 @@ describe 'handleReply simulations', ->
 				.then ->
 					testServer.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
 				client.once 'connect', -> done()
-				
+
 			client.connect(2)
 			# immediately disconnect
 			client.conn.destroy()
@@ -652,3 +652,35 @@ describe 'handleReply simulations', ->
 				time.getTime().should.equal 1394457068
 				done()
 			server.reply ':availo.esper.net 333 PakaluPapito #sexy KR!~KR@78-72-225-13-no193.business.telia.com 1394457068'
+
+	describe 'network-error', ->
+		beforeEach (done) ->
+			cleanUp client, server, done
+
+		it 'should emit an error and disconnect event', (finalDone) ->
+			server = new TestServer 6667
+			client = new Client
+				server: 'localhost'
+				nick: 'BadNetworkBoy'
+				messageDelay: 0
+				autoReconnect: false
+				channels: []
+			done = multiDone 2, (args...) ->
+				client.isConnected().should.be.false
+				expect(client.conn).to.be.null
+				finalDone args...
+
+			server.expect [
+				'NICK BadNetworkBoy'
+				'USER NodeIRCClient 8 * :NodeIRCClient'
+			]
+			.then ->
+				server.reply ':localhost 001 BadNetworkBoy :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
+
+			client.once 'connect', ->
+				client.once 'error', (e) ->
+					done()
+				client.once 'disconnect', (e) ->
+					done()
+
+				client.conn.emit 'error', message: 'EFAKEERROR'

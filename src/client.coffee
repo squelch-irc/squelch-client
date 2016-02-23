@@ -134,7 +134,7 @@ class Client extends EventEmitter2
 						@_.timeout = setTimeout =>
 							seconds = (new Date().getTime() - pingTime) / 1000
 							@emit 'timeout', {seconds}
-							@handleReply ircMsg.parse "ERROR :Ping Timeout(#{seconds} seconds)"
+							@handleReply ircMsg.parse "ERROR :Ping Timeout (#{seconds} seconds)"
 						, @opt.timeout
 					, @opt.timeout
 					if data?
@@ -143,6 +143,7 @@ class Client extends EventEmitter2
 
 				@conn.on 'error', (e) =>
 					debugError 'Disconnected by network error.'
+					@handleReply ircMsg.parse "ERROR :Connection error (#{e.message})"
 					if @opt.autoReconnect and @opt.autoReconnectTries > 0
 						debug "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{@opt.autoReconnectTries} remaining tries)"
 						setTimeout =>
