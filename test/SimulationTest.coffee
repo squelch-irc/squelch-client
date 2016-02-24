@@ -608,14 +608,14 @@ describe 'handleReply simulations', ->
 						done()
 		it 'should send a PING to the server after a timeout', (done) ->
 			server.expect 'PING :ruthere'
-			.then ->
+			.then async(done) ->
 				(((new Date()).getTime() - lastReplyTime) > 500).should.be.true
 				server.reply [
 					':irc.ircnet.net PONG irc.ircnet.net :ruthere'
 					'PING :finished'
 				]
 				server.expect 'PONG :finished'
-			.then ->
+			.then async(done) ->
 				client.isConnected().should.be.true
 				done()
 
