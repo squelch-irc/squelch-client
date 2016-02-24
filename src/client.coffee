@@ -256,6 +256,7 @@ class Client extends EventEmitter2
 	isChannel: (chan) ->
 		return @_.iSupport['CHANTYPES'].indexOf(chan[0]) isnt -1
 
+	modeToPrefix: (mode) -> return @_.prefix[mode]
 
 	handleReply: (parsedReply) ->
 		if not parsedReply?

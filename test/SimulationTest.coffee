@@ -21,6 +21,7 @@ async = (done) ->
 cleanUp = (client, server, done) ->
 	if client.isConnected()
 		server.clientQuitting() # warn server to ignore ECONNREST errors
+		client.on 'error', (e) -> console.error e
 		client.forceQuit()
 		server.expect 'QUIT'
 	server.close()
@@ -80,6 +81,8 @@ describe 'handleReply simulations', ->
 	it 'should read the iSupport values correctly', ->
 		client._.iSupport['CHANTYPES'] = '#'
 		client._.iSupport['CASEMAPPING'] = 'rfc1459'
+		client.modeToPrefix('o').should.equal '@'
+		client.modeToPrefix('v').should.equal '+'
 
 	it 'should know what a channel is (isChannel)', ->
 		client.isChannel('#burp').should.be.true
