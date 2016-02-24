@@ -599,26 +599,26 @@ describe 'handleReply simulations', ->
 					nick: 'PakaluPapito'
 					messageDelay: 0
 					autoReconnect: false
-					timeout: 500 # Just large enough to run tests
+					timeout: 50 # Just large enough to run tests
 				server.expect [
 					'NICK PakaluPapito'
 					'USER NodeIRCClient 8 * :NodeIRCClient'
 				]
 				.then ->
 					server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
-					lastReplyTime = (new Date()).getTime()
+					lastReplyTime = Date.now()
 					client.once 'connect', ({nick}) ->
 						done()
 		it 'should send a PING to the server after a timeout', (done) ->
 			server.expect 'PING :ruthere'
-			.then async(done) ->
-				(((new Date()).getTime() - lastReplyTime) > 500).should.be.true
+			.then ->
+				((Date.now() - lastReplyTime) >= 50).should.be.true
 				server.reply [
 					':irc.ircnet.net PONG irc.ircnet.net :ruthere'
 					'PING :finished'
 				]
 				server.expect 'PONG :finished'
-			.then async(done) ->
+			.then ->
 				client.isConnected().should.be.true
 				done()
 
@@ -626,7 +626,7 @@ describe 'handleReply simulations', ->
 			done = multiDone 3, done
 			server.expect 'PING :ruthere'
 			.then ->
-				(((new Date()).getTime() - lastReplyTime) > 500).should.be.true
+				((Date.now() - lastReplyTime) >= 50).should.be.true
 				client.once 'timeout', ->
 					done()
 				client.once 'error', ->
