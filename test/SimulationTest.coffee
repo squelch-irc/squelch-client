@@ -81,8 +81,6 @@ describe 'handleReply simulations', ->
 	it 'should read the iSupport values correctly', ->
 		client._.iSupport['CHANTYPES'] = '#'
 		client._.iSupport['CASEMAPPING'] = 'rfc1459'
-		client.modeToPrefix('o').should.equal '@'
-		client.modeToPrefix('v').should.equal '+'
 
 	it 'should know what a channel is (isChannel)', ->
 		client.isChannel('#burp').should.be.true
@@ -123,8 +121,8 @@ describe 'handleReply simulations', ->
 			client.getChannel('#sexy')._.mode.should.not.equal client._.channels['#sexy']._.mode
 
 	it 'should know the nick prefixes and chanmodes', ->
-		client._.prefix.o.should.equal '@'
-		client._.prefix.v.should.equal '+'
+		client.modeToPrefix('o').should.equal '@'
+		client.modeToPrefix('v').should.equal '+'
 		client._.chanmodes[0].should.equal 'eIbq'
 		client._.chanmodes[1].should.equal 'k'
 		client._.chanmodes[2].should.equal 'flj'

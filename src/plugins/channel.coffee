@@ -171,14 +171,14 @@ module.exports = ->
 			e.channels = leftChannels
 
 		client._.internalEmitter.on '+mode', ({chan, sender, mode, param}) ->
-			if client._.prefix[mode]? # Update user's mode in channel
-				client._.channels[chan.toLowerCase()]._.users[param] = client._.prefix[mode]
+			if client.modeToPrefix(mode)? # Update user's mode in channel
+				client._.channels[chan.toLowerCase()]._.users[param] = client.modeToPrefix(mode)
 			else # Update channel mode
 				channelModes = client._.channels[chan.toLowerCase()]._.mode
 				channelModes.push mode
 
 		client._.internalEmitter.on '-mode', ({chan, sender, mode, param}) ->
-			if client._.prefix[mode]? # Update user's mode in channel
+			if client.modeToPrefix(mode)? # Update user's mode in channel
 				client._.channels[chan.toLowerCase()]._.users[param] = ''
 			else # Update channel mode
 				channelModes = client._.channels[chan.toLowerCase()]._.mode
