@@ -42,7 +42,8 @@ class Client extends EventEmitter2
 			connected: false
 			disconnecting: false
 			messageQueue: []
-			iSupport: {}
+			iSupport:
+				CHANTYPES: '&#'
 			greeting: {}
 			# default values in case there's no iSupport
 			prefix:
