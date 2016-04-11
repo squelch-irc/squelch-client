@@ -7,7 +7,7 @@ tls = require 'tls'
 fs = require 'fs'
 path = require 'path'
 Promise = require 'bluebird'
-EventEmitter2 = require('eventemitter2').EventEmitter2
+Emitter = require('@rahatarmanahmed/event-kit').Emitter
 debug = require('debug')('squelch-client:testserver')
 
 defer = ->
@@ -18,7 +18,7 @@ defer = ->
 	return {resolve, reject, promise}
 
 
-class TestServer extends EventEmitter2
+class TestServer extends Emitter
 	constructor: (port, ssl = false) ->
 		super()
 		@expectQueue = []

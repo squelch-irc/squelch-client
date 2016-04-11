@@ -1,7 +1,7 @@
 net = require 'net'
 tls = require 'tls'
 path = require 'path'
-EventEmitter2 = require('eventemitter2').EventEmitter2
+{Emitter} = require '@rahatarmanahmed/event-kit'
 ircMsg = require 'irc-message'
 Promise = require 'bluebird'
 streamMap = require 'through2-map'
@@ -34,10 +34,11 @@ defaultOpt =
 	certificateExpired: false
 	timeout: 120000
 
-class Client extends EventEmitter2
+class Client extends Emitter
 	constructor: (opt) ->
+		super()
 		@_ =
-			internalEmitter: new EventEmitter2()
+			internalEmitter: new Emitter()
 			numRetries: 0
 			connected: false
 			disconnecting: false
@@ -50,8 +51,6 @@ class Client extends EventEmitter2
 				o: '@'
 				v: '+'
 			chanmodes: ['beI', 'k', 'l', 'aimnpqsrt']
-		@setMaxListeners 0
-		@_.internalEmitter.setMaxListeners 0
 		if not opt?
 			throw new Error 'No options argument given.'
 		if typeof opt is 'string'
