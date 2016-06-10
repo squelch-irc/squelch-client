@@ -3,9 +3,14 @@ module.exports = ->
 	return (client) ->
 		client.notice = (target, msg) ->
 			if @opt.autoSplitMessage
-				@raw "NOTICE #{target} :#{line}" for line in @splitText "NOTICE #{target}", msg
+				for line in @splitText "NOTICE #{target}", msg
+					@raw "NOTICE #{target} :#{line}"
+					if @opt.triggerEventsForOwnMessages
+						@emit 'notice', {from: @nick(), to: target, msg: line}
 			else
 				@raw "NOTICE #{target} :#{msg}"
+				if @opt.triggerEventsForOwnMessages
+					@emit 'notice', {from: @nick(), to: target, msg}
 
 		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'NOTICE'

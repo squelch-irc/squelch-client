@@ -33,6 +33,7 @@ defaultOpt =
 	selfSigned: false
 	certificateExpired: false
 	timeout: 120000
+	triggerEventsForOwnMessages: false
 
 class Client extends Emitter
 	constructor: (opt) ->
@@ -252,6 +253,10 @@ class Client extends Emitter
 	autoRejoin: (enabled) ->
 		return @opt.autoRejoin if not enabled?
 		@opt.autoRejoin = enabled
+
+	triggerEventsForOwnMessages: (enabled) ->
+		return @opt.triggerEventsForOwnMessages if not enabled?
+		@opt.triggerEventsForOwnMessages = enabled
 
 	isChannel: (chan) ->
 		return @_.iSupport['CHANTYPES'].indexOf(chan[0]) isnt -1

@@ -3,15 +3,26 @@ module.exports = ->
 	return (client) ->
 		client.msg = (target, msg) ->
 			if @opt.autoSplitMessage
-				@raw "PRIVMSG #{target} :#{line}" for line in @splitText "PRIVMSG #{target}", msg
+				for line in @splitText "PRIVMSG #{target}", msg
+					@raw "PRIVMSG #{target} :#{line}"
+					if @opt.triggerEventsForOwnMessages
+						@emit 'msg', {from: @nick(), to: target, msg: line}
 			else
 				@raw "PRIVMSG #{target} :#{msg}"
+				if @opt.triggerEventsForOwnMessages
+					@emit 'msg', {from: @nick(), to: target, msg}
+
 
 		client.action = (target, msg) ->
 			if @opt.autoSplitMessage
-				@msg target, "\x01ACTION #{line}\x01" for line in @splitText 'PRIVMSG #{target}', msg, 9
+				for line in @splitText 'PRIVMSG #{target}', msg, 9
+					@msg target, "\x01ACTION #{line}\x01"
+					if @opt.triggerEventsForOwnMessages
+						@emit 'action', {from: @nick(), to: target, msg: line}
 			else
 				@msg target, "\x01ACTION #{msg}\x01"
+				if @opt.triggerEventsForOwnMessages
+					@emit 'action', {from: @nick(), to: target, msg}
 
 		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'PRIVMSG'

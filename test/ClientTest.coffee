@@ -272,6 +272,39 @@ describe 'Client', ->
 			.then done
 			.catch done
 
+		it 'should trigger a `msg` event if triggerEventsForOwnMessages is true', (done) ->
+			client.triggerEventsForOwnMessages true
+			client.autoSplitMessage false
+			client.on 'msg', ({from, to, msg}) ->
+				from.should.equal 'PakaluPapito'
+				to.should.equal '#girls'
+				msg.should.equal 'u want to see gas station'
+				done()
+			server.expect [
+				'PRIVMSG #girls :u want to see gas station'
+			]
+			client.msg '#girls', 'u want to see gas station'
+
+		it 'should trigger multiple `msg` event for long messages if triggerEventsForOwnMessages is true', (done) ->
+			client.triggerEventsForOwnMessages true
+			client.autoSplitMessage true
+			client.once 'msg', ({from, to, msg}) ->
+				from.should.equal 'PakaluPapito'
+				to.should.equal 'Pope'
+				msg.should.equal 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta velit, et euismo'
+				client.once 'msg', ({from, to, msg}) ->
+					from.should.equal 'PakaluPapito'
+					to.should.equal 'Pope'
+					msg.should.equal 'd odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
+					done()
+
+			server.expect [
+				'PRIVMSG Pope :Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta velit, et euismo'
+				'PRIVMSG Pope :d odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
+			]
+			client.msg 'Pope', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta velit, et euismod odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
+
+
 	describe 'action', ->
 		it 'should send a PRIVMSG action', (done) ->
 			client.action '#girls', 'shows u gas station'
@@ -292,6 +325,38 @@ describe 'Client', ->
 			.then done
 			.catch done
 
+		it 'should trigger a `action` event if triggerEventsForOwnMessages is true', (done) ->
+			client.triggerEventsForOwnMessages true
+			client.autoSplitMessage false
+			client.on 'action', ({from, to, msg}) ->
+				from.should.equal 'PakaluPapito'
+				to.should.equal '#girls'
+				msg.should.equal 'shows u gas station'
+				done()
+			server.expect [
+				'PRIVMSG #girls :\x01ACTION shows u gas station\x01'
+			]
+			client.action '#girls', 'shows u gas station'
+
+		it 'should trigger multiple `action` event for long messages if triggerEventsForOwnMessages is true', (done) ->
+			client.triggerEventsForOwnMessages true
+			client.autoSplitMessage true
+			client.once 'action', ({from, to, msg}) ->
+				from.should.equal 'PakaluPapito'
+				to.should.equal 'Pope'
+				msg.should.equal 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta ve'
+				client.once 'action', ({from, to, msg}) ->
+					from.should.equal 'PakaluPapito'
+					to.should.equal 'Pope'
+					msg.should.equal 'lit, et euismod odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
+					done()
+
+			server.expect [
+				'PRIVMSG Pope :\x01ACTION Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta ve\x01'
+				'PRIVMSG Pope :\x01ACTION lit, et euismod odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.\x01'
+			]
+			client.action 'Pope', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta velit, et euismod odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
+
 	describe 'notice', ->
 		it 'should send a NOTICE', (done) ->
 			client.notice '#girls', 'u want to see gas station'
@@ -311,6 +376,38 @@ describe 'Client', ->
 			]
 			.then done
 			.catch done
+
+		it 'should trigger a `notice` event if triggerEventsForOwnMessages is true', (done) ->
+			client.triggerEventsForOwnMessages true
+			client.autoSplitMessage false
+			client.on 'notice', ({from, to, msg}) ->
+				from.should.equal 'PakaluPapito'
+				to.should.equal 'HotGurl22'
+				msg.should.equal 'i show u gas station'
+				done()
+			server.expect [
+				'NOTICE HotGurl22 :i show u gas station'
+			]
+			client.notice 'HotGurl22', 'i show u gas station'
+
+		it 'should trigger multiple `notice` event for long messages if triggerEventsForOwnMessages is true', (done) ->
+			client.triggerEventsForOwnMessages true
+			client.autoSplitMessage true
+			client.once 'notice', ({from, to, msg}) ->
+				from.should.equal 'PakaluPapito'
+				to.should.equal 'Pope'
+				msg.should.equal 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta velit, et euismod'
+				client.once 'notice', ({from, to, msg}) ->
+					from.should.equal 'PakaluPapito'
+					to.should.equal 'Pope'
+					msg.should.equal ' odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
+					done()
+
+			server.expect [
+				'NOTICE Pope :Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta velit, et euismod'
+				'NOTICE Pope : odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
+			]
+			client.notice 'Pope', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta velit, et euismod odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
 
 	describe 'join', ->
 		it 'a single channel with a callback', (done) ->
