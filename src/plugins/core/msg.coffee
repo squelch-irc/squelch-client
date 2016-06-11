@@ -16,11 +16,11 @@ module.exports = ->
 		client.action = (target, msg) ->
 			if @opt.autoSplitMessage
 				for line in @splitText 'PRIVMSG #{target}', msg, 9
-					@msg target, "\x01ACTION #{line}\x01"
+					@raw "PRIVMSG #{target} :\x01ACTION #{line}\x01"
 					if @opt.triggerEventsForOwnMessages
 						@emit 'action', {from: @nick(), to: target, msg: line}
 			else
-				@msg target, "\x01ACTION #{msg}\x01"
+				@raw "PRIVMSG #{target} :\x01ACTION #{msg}\x01"
 				if @opt.triggerEventsForOwnMessages
 					@emit 'action', {from: @nick(), to: target, msg}
 
