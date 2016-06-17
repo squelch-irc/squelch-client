@@ -419,6 +419,11 @@ describe 'Client', ->
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
 
+		it 'a single channel with a key', (done) ->
+			client.join '#furry', 'password'
+			server.expect 'JOIN #furry password'
+			.then done
+
 		it 'an array of channels with a callback', (done) ->
 			client.join ['#furry', '#wizard'], (err, channels) ->
 				should.not.exist err
