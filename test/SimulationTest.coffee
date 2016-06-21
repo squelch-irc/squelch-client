@@ -4,7 +4,6 @@ chai = require 'chai'
 should = chai.should()
 
 Client = require '../src/client'
-ChannelPlugin = require '../src/plugins/channel'
 TestServer = require './TestServer'
 
 ###
@@ -42,7 +41,6 @@ describe 'handleReply simulations', ->
 			messageDelay: 0
 			autoReconnect: false
 			autoConnect: false
-		client.use(ChannelPlugin())
 		connectPromise = client.connect()
 		server.expect [
 			'NICK PakaluPapito'
