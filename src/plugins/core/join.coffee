@@ -7,7 +7,7 @@ module.exports = ->
 			if key instanceof Function
 				cb = key
 				key = null
-				
+
 			if channel instanceof Array
 				if channel.length is 0
 					return
