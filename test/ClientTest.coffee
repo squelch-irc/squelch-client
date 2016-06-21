@@ -510,6 +510,53 @@ describe 'Client', ->
 				return
 			.then done
 			.catch done
+
+	describe 'mode', ->
+		it 'should send a MODE', (done) ->
+			client.mode '#kellyirc', '+ck password'
+			server.expect 'MODE #kellyirc +ck password'
+			.then done
+
+		it 'op should send a +o for a single user', (done) ->
+			client.op '#kellyirc', 'user1'
+			server.expect 'MODE #kellyirc +o user1'
+			.then done
+
+		it 'op should send a +ooo for 3 users', (done) ->
+			client.op '#kellyirc', ['user1', 'user2', 'user3']
+			server.expect 'MODE #kellyirc +ooo user1 user2 user3'
+			.then done
+
+		it 'deop should send a -o for a single user', (done) ->
+			client.deop '#kellyirc', 'user1'
+			server.expect 'MODE #kellyirc -o user1'
+			.then done
+
+		it 'deop should send a -ooo for 3 users', (done) ->
+			client.deop '#kellyirc', ['user1', 'user2', 'user3']
+			server.expect 'MODE #kellyirc -ooo user1 user2 user3'
+			.then done
+
+		it 'voice should send a +v for a single user', (done) ->
+			client.voice '#kellyirc', 'user1'
+			server.expect 'MODE #kellyirc +v user1'
+			.then done
+
+		it 'voice should send a +vvv for 3 users', (done) ->
+			client.voice '#kellyirc', ['user1', 'user2', 'user3']
+			server.expect 'MODE #kellyirc +vvv user1 user2 user3'
+			.then done
+
+		it 'devoice should send a -v for a single user', (done) ->
+			client.devoice '#kellyirc', 'user1'
+			server.expect 'MODE #kellyirc -v user1'
+			.then done
+
+		it 'devoice should send a -vvv for 3 users', (done) ->
+			client.devoice '#kellyirc', ['user1', 'user2', 'user3']
+			server.expect 'MODE #kellyirc -vvv user1 user2 user3'
+			.then done
+
 	describe 'ssl', ->
 		beforeEach (done) ->
 			cleanUp client, server, done

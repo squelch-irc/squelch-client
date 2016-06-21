@@ -1,4 +1,7 @@
 {getSender} = require '../../util'
+
+userToLetter = (users, letter) -> users.map(-> letter).join('')
+
 module.exports = ->
 	return (client) ->
 		client.mode = (chan, modeStr) ->
@@ -11,16 +14,20 @@ module.exports = ->
 			@mode chan, "-b #{hostmask}"
 
 		client.op = (chan, user) ->
-			@mode chan, "+o #{user}"
+			users = [].concat(user)
+			@mode chan, "+#{userToLetter users, 'o'} #{users.join ' '}"
 
 		client.deop = (chan, user) ->
-			@mode chan, "-o #{user}"
+			users = [].concat(user)
+			@mode chan, "-#{userToLetter users, 'o'} #{users.join ' '}"
 
 		client.voice = (chan, user) ->
-			@mode chan, "+v #{user}"
+			users = [].concat(user)
+			@mode chan, "+#{userToLetter users, 'v'} #{users.join ' '}"
 
 		client.devoice = (chan, user) ->
-			@mode chan, "-v #{user}"
+			users = [].concat(user)
+			@mode chan, "-#{userToLetter users, 'v'} #{users.join ' '}"
 
 		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'MODE'
@@ -56,4 +63,3 @@ module.exports = ->
 					client.emit 'mode', {chan, sender, mode: reply.params[1..].join ' '}
 				else
 					client.emit 'usermode', {user, sender, mode: reply.params[1..].join ' '}
-
