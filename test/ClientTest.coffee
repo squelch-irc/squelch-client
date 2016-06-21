@@ -557,6 +557,18 @@ describe 'Client', ->
 			server.expect 'MODE #kellyirc -vvv user1 user2 user3'
 			.then done
 
+		describe 'topic', ->
+			beforeEach -> client.opt.promiseTimeout = 1000
+			it 'should set a TOPIC', (done) ->
+				client.topic '#kellyirc', 'This is topic now'
+				server.expect 'TOPIC #kellyirc :This is topic now'
+				.then done
+
+			it 'should request a TOPIC', (done) ->
+				client.topic '#kellyirc'
+				server.expect 'TOPIC #kellyirc'
+				.then done
+
 	describe 'ssl', ->
 		beforeEach (done) ->
 			cleanUp client, server, done
