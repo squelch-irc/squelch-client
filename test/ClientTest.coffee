@@ -161,20 +161,18 @@ describe 'Client', ->
 	describe 'autoRejoin', ->
 		it 'should send a join command after a KICK', (done) ->
 			client.autoRejoin true
-			joinPromise = client.join '#nice'
+			client.join '#nice'
 			server.expect 'JOIN #nice'
 			.then ->
 				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #nice'
-				joinPromise
-			.then (e) ->
-				e.should.equal '#nice'
+				return new Promise (resolve) ->
+					client.once 'join', resolve
+			.then ({chan}) ->
+				chan.should.equal '#nice'
 				server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #nice PakaluPapito :Nice ppl only'
 				server.expect 'JOIN #nice'
 			.then done
 			.catch done
-
-
-
 
 	describe 'kick', ->
 		it 'with single chan and nick', (done) ->
@@ -210,35 +208,6 @@ describe 'Client', ->
 			.then done
 			.catch done
 
-		it 'with two params should callback on success', (done) ->
-			client.nick 'PricklyPear', async(done) (err, e) ->
-				should.not.exist err
-				e.oldNick.should.equal 'PakaluPapito'
-				e.newNick.should.equal 'PricklyPear'
-				done()
-			server.expect 'NICK PricklyPear'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com NICK :PricklyPear'
-
-		it 'with two params should callback on error 432', (done) ->
-			client.nick '!@#$%^&*()', async(done) (err, e) ->
-				err.command.should.equal '432'
-				should.not.exist e
-				done()
-			server.expect 'NICK !@#$%^&*()'
-			.then ->
-				server.reply ':irc.ircnet.net 432 PakaluPapito ass :Erroneous Nickname'
-
-		it 'should resolve the promise on success', (done) ->
-			nickPromise = client.nick 'PricklyPear'
-			server.expect 'NICK PricklyPear'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com NICK :PricklyPear'
-				return nickPromise
-			.then (e) ->
-				e.oldNick.should.equal 'PakaluPapito'
-				e.newNick.should.equal 'PricklyPear'
-				done()
 		it 'should not auto nick change while connected', (done) ->
 			client.nick 'bloodninja', async(done) (err, e) ->
 				err.command.should.equal '433'
@@ -410,46 +379,20 @@ describe 'Client', ->
 			client.notice 'Pope', 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam mattis interdum nisi eu convallis. Vivamus non tortor sit amet dui feugiat lobortis nec faucibus risus. Mauris lacinia nunc sed felis viverra, nec dapibus elit gravida. Curabitur ac faucibus justo, id porttitor sapien. Ut sit amet orci massa. Aliquam ac lectus efficitur, eleifend ante a, fringilla elit. Sed ullamcorper porta velit, et euismod odio vestibulum et. Vestibulum luctus quam ut sapien tempus sollicitudin. Mauris magna odio, lacinia eget sollicitudin at, lobortis nec nunc. In hac habitasse platea dictumst. Maecenas mauris mauris, sodales sed nulla vitae, rutrum porta ipsum. Ut quis pellentesque elit.'
 
 	describe 'join', ->
-		it 'a single channel with a callback', (done) ->
-			client.join '#furry', async(done) (err, chan) ->
-				should.not.exist err
-				chan.should.be.equal '#furry'
-				done()
+		it 'a single channel', (done) ->
+			client.join '#furry'
 			server.expect 'JOIN #furry'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
+			.then done
 
 		it 'a single channel with a key', (done) ->
 			client.join '#furry', 'password'
 			server.expect 'JOIN #furry password'
 			.then done
 
-		it 'an array of channels with a callback', (done) ->
-			client.join ['#furry', '#wizard'], (err, channels) ->
-				should.not.exist err
-				channels[0].should.be.equal '#furry'
-				channels[1].should.be.equal '#wizard'
-				done()
-
+		it 'an array of channels', (done) ->
+			client.join ['#furry', '#wizard']
 			server.expect 'JOIN #furry,#wizard'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #wizard'
-
-		it 'an array of channels should resolve the promise', (done) ->
-			joinPromise = client.join ['#furry', '#wizard']
-			server.expect 'JOIN #furry,#wizard'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #furry'
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #wizard'
-				joinPromise
-			.then (e) ->
-				e[0].should.be.equal '#furry'
-				e[1].should.be.equal '#wizard'
-				return
 			.then done
-			.catch done
-
 
 	describe 'invite', ->
 		it 'should send an INVITE', (done) ->
@@ -471,43 +414,9 @@ describe 'Client', ->
 			.then done
 			.catch done
 
-		it 'a single channel with a callback', (done) ->
-			client.part '#furry', async(done) (err, chan) ->
-				should.not.exist err
-				chan.should.be.equal '#furry'
-				done()
-			server.expect 'PART #furry'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry'
-
 		it 'an array of channels', (done) ->
 			client.part ['#furry', '#wizard', '#jayleno']
 			server.expect 'PART #furry,#wizard,#jayleno'
-			.then done
-			.catch done
-
-		it 'an array of channels with a callback should work for one channel in the array', (done) ->
-			client.part ['#furry', '#wizard'], async(done) (err, channels) ->
-				should.not.exist err
-				channels[0].should.equal '#furry'
-				channels[1].should.equal '#wizard'
-				done()
-			server.expect 'PART #furry,#wizard'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry'
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #wizard'
-
-		it 'an array of channels should resolve the promise', (done) ->
-			partPromise = client.part ['#furry', '#wizard']
-			server.expect 'PART #furry,#wizard'
-			.then ->
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #furry'
-				server.reply ':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com PART #wizard'
-				partPromise
-			.then (channels) ->
-				channels[0].should.equal '#furry'
-				channels[1].should.equal '#wizard'
-				return
 			.then done
 			.catch done
 

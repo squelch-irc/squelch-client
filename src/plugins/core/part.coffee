@@ -3,35 +3,13 @@ Promise = require 'bluebird'
 
 module.exports = ->
 	return (client) ->
-		client.part = (channel, reason, cb) ->
-			if not reason?
-				reason = ''
-			else if reason instanceof Function
-				cb = reason
-				reason = ''
-			else
+		client.part = (channel, reason = '') ->
+			if reason isnt ''
 				reason = ' :' + reason
-			if channel instanceof Array and channel.length > 0
-				@raw "PART #{channel.join()+reason}"
-				partPromises = for c in channel
-					do (c) =>
-						new Promise (resolve) =>
-							listener = ({chan, nick}) ->
-								return if chan isnt c
-								client._.internalEmitter.off 'part', listener
-								resolve chan
-							@_.internalEmitter.on 'part', listener
-				return Promise.all(partPromises).nodeify cb or @cbNoop
+			channels = [].concat channel
+			return if channels.length is 0
+			@raw "PART #{channels.join()+reason}"
 
-			else
-				return new Promise (resolve) =>
-					@raw "PART #{channel+reason}"
-					listener = ({chan, nick}) ->
-						return if chan isnt channel
-						client._.internalEmitter.off 'part', listener
-						resolve chan
-					@_.internalEmitter.once 'part', listener
-				.nodeify cb or @cbNoop
 		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'PART'
 				nick = getSender reply

@@ -3,34 +3,10 @@ Promise = require 'bluebird'
 
 module.exports = ->
 	return (client) ->
-		client.join = (channel, key, cb) ->
-			if key instanceof Function
-				cb = key
-				key = null
-
-			if channel instanceof Array
-				if channel.length is 0
-					return
-				@raw "JOIN #{channel.join()} #{key || ''}".trim()
-				joinPromises = for c in channel
-					do (c) =>
-						new Promise (resolve) =>
-							listener = ({chan, nick}) ->
-								return if chan isnt c
-								client._.internalEmitter.off 'join', listener
-								resolve chan
-							@_.internalEmitter.on 'join', listener
-				return Promise.all(joinPromises).nodeify cb or @cbNoop
-
-			else
-				return new Promise (resolve) =>
-					@raw "JOIN #{channel} #{key || ''}".trim()
-					listener = ({chan, nick}) ->
-						return if chan isnt channel
-						client._.internalEmitter.off 'join', listener
-						resolve chan
-					@_.internalEmitter.on 'join', listener
-				.nodeify cb or @cbNoop
+		client.join = (channel, key = '') ->
+			channels = [].concat channel
+			return if channels.length is 0
+			@raw "JOIN #{channels.join()} #{key}".trim()
 
 		client._.internalEmitter.on 'raw', (reply) ->
 			if reply.command is 'JOIN'
