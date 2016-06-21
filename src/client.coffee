@@ -72,7 +72,6 @@ class Client extends Emitter
 		@use require('./plugins/core/invite')()
 		@use require('./plugins/core/mode')()
 		@use require('./plugins/core/motd')()
-		@use require('./plugins/channel')()
 
 		if @opt.autoConnect
 			@connect()
