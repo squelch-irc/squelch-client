@@ -61,7 +61,7 @@ describe 'handleReply simulations', ->
 				':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy'
 				':availo.esper.net 332 PakaluPapito #sexy :Welcome to the #sexy!'
 				':availo.esper.net 333 PakaluPapito #sexy KR!~KR@78-72-225-13-no193.business.telia.com 1394457068'
-				':availo.esper.net 353 PakaluPapito * #sexy :PakaluPapito @KR Freek +Kurea Chase ^Freek'
+				':availo.esper.net 353 PakaluPapito * #sexy :PakaluPapito @KR Freek +Kurea Chase'
 				':availo.esper.net 366 PakaluPapito #sexy :End of /NAMES list.'
 				':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #Furry'
 				':availo.esper.net 332 PakaluPapito #Furry :Welcome to the #Furry! We have furries.'
@@ -92,6 +92,7 @@ describe 'handleReply simulations', ->
 			testSexy = (chan) ->
 				chan.should.exist
 				chan.name().should.equal '#sexy'
+				chan.client().should.equal client
 				chan.topic().should.equal 'Welcome to the #sexy!'
 				chan.topicSetter().should.equal 'KR!~KR@78-72-225-13-no193.business.telia.com'
 				chan.topicTime().getTime().should.equal 1394457068
@@ -101,6 +102,7 @@ describe 'handleReply simulations', ->
 				chan.getStatus('Kurea').should.equal '+'
 				chan.contains('Chase').should.equal true
 				chan.getStatus('Chase').should.equal ''
+				chan.users().should.deep.equal ['PakaluPapito', 'KR', 'Freek', 'Kurea', 'Chase',]
 				should.not.exist chan._.users['Bud']
 			testFurry = (chan) ->
 				chan.should.exist
@@ -114,11 +116,6 @@ describe 'handleReply simulations', ->
 			testSexy client.getChannel '#sexy'
 			testFurry client._.channels['#furry']
 			testFurry client.getChannel '#furry'
-
-		it 'created from getChannel should not equal their originals', ->
-			client.getChannel('#sexy').should.not.equal client._.channels['#sexy']
-			client.getChannel('#sexy')._.users.should.not.equal client._.channels['#sexy']._.users
-			client.getChannel('#sexy')._.mode.should.not.equal client._.channels['#sexy']._.mode
 
 	it 'should know the nick prefixes and chanmodes', ->
 		client.modeToPrefix('o').should.equal '@'

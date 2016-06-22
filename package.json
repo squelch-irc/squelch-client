@@ -15,7 +15,6 @@
     "irc-colors": "^1.2.0",
     "irc-message": "~3.0.0",
     "irc-replies": "^2.0.1",
-    "lodash.clonedeep": "^4.3.0",
     "through2-map": "^2.0.0"
   },
   "devDependencies": {

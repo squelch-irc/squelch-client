@@ -467,16 +467,23 @@ describe 'Client', ->
 			.then done
 
 		describe 'topic', ->
-			beforeEach -> client.opt.promiseTimeout = 1000
-			it 'should set a TOPIC', (done) ->
-				client.topic '#kellyirc', 'This is topic now'
-				server.expect 'TOPIC #kellyirc :This is topic now'
+			beforeEach (done) ->
+				server.reply [
+					':PakaluPapito!~NodeIRCCl@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy'
+					':availo.esper.net 332 PakaluPapito #sexy :Welcome to the #sexy!'
+					':availo.esper.net 333 PakaluPapito #sexy KR!~KR@78-72-225-13-no193.business.telia.com 1394457068'
+					'PING :finished'
+				]
+				server.expect 'PONG :finished'
 				.then done
 
-			it 'should request a TOPIC', (done) ->
-				client.topic '#kellyirc'
-				server.expect 'TOPIC #kellyirc'
+			it 'should set a TOPIC', (done) ->
+				client.topic '#sexy', 'This is topic now'
+				server.expect 'TOPIC #sexy :This is topic now'
 				.then done
+
+			it 'should return a TOPIC', ->
+				client.topic('#sexy').should.equal 'Welcome to the #sexy!'
 
 	describe 'ssl', ->
 		beforeEach (done) ->

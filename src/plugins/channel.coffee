@@ -1,4 +1,3 @@
-cloneDeep = require 'lodash.clonedeep'
 {getReplyCode} = require '../replies'
 
 
@@ -13,12 +12,6 @@ class Channel
 			topicTime: null
 			users: {}
 			mode: []
-
-	# Clones this Channel object
-	clone: ->
-		copy = new Channel @, @_.name
-		copy._ = cloneDeep @._
-		return copy
 
 	name: ->
 		return @_.name
@@ -37,7 +30,7 @@ class Channel
 
 	topic: (topic) ->
 		return @_.topic  if not topic?
-		@_.client.raw "TOPIC #{@_.name} #{topic}"
+		@_.client.raw "TOPIC #{@_.name} :#{topic}"
 
 	topicSetter: ->
 		return @_.topicSetter
@@ -89,7 +82,6 @@ class Channel
 		return (nick for nick, status of @_.users when status is '')
 
 module.exports = ->
-	# TODO: accept option to not clone channel objects
 	return (client) ->
 		client._.channels = {}
 
@@ -97,11 +89,13 @@ module.exports = ->
 			return (@getChannel(chan) for chan of @_.channels)
 
 		client.getChannel = (name) ->
-			chan = @_.channels[name.toLowerCase()]
-			return chan?.clone()
+			return @_.channels[name.toLowerCase()]
 
 		client.isInChannel = (name, nick = @nick()) ->
 			return !!(@getChannel(name)?.contains(nick))
+
+		client.topic = (chan, topic) ->
+			return @getChannel(chan).topic(topic)
 
 		# Override client.mode so it can access channel data
 		oldMode = client.mode
@@ -113,12 +107,15 @@ module.exports = ->
 
 			if reply.command is getReplyCode 'RPL_NOTOPIC'
 				client._.channels[reply.params[1].toLowerCase()]._.topic = ''
+				client.emit 'topic', {chan: reply.params[1], topic: ''}
 			if reply.command is getReplyCode 'RPL_TOPIC'
 				client._.channels[reply.params[1].toLowerCase()]._.topic = reply.params[2]
+				client.emit 'topic', {chan: reply.params[1], topic: reply.params[2]}
 			if reply.command is getReplyCode 'RPL_TOPIC_WHO_TIME'
 				chan = client._.channels[reply.params[1].toLowerCase()]
 				chan._.topicSetter = reply.params[2]
 				chan._.topicTime = new Date parseInt(reply.params[3])
+				client.emit 'topicwho', {chan: reply.params[1], hostmask: chan._.topicSetter, time: chan._.topicTime}
 			if reply.command is getReplyCode 'RPL_NAMREPLY'
 				# TODO: trigger event on name update
 				chan = client._.channels[reply.params[2].toLowerCase()]
