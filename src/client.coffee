@@ -42,6 +42,7 @@ class Client extends Emitter
 			internalEmitter: new Emitter()
 			numRetries: 0
 			connected: false
+			connecting: false
 			disconnecting: false
 			messageQueue: []
 			iSupport:
@@ -91,6 +92,7 @@ class Client extends Emitter
 
 	connect: (tries = 1, cb) ->
 		return new Promise (resolve, reject) =>
+			@_.connecting = true
 			@emit 'connecting',
 				port: @opt.port
 				server: @opt.server
@@ -101,6 +103,7 @@ class Client extends Emitter
 			tries--
 
 			errorListener = (err) =>
+				@_.connecting = false
 				debugError 'Unable to connect.'
 				debugError err
 				if tries > 0 or tries is -1
@@ -195,11 +198,9 @@ class Client extends Emitter
 	forceQuit: (reason) ->
 		if @isConnected()
 			@raw 'QUIT' + (if reason? then " :#{reason}" else ''), false
-			@_.disconnecting = true
-			@handleReply ircMsg.parse 'ERROR :Force Quit'
-		else if @conn?
-			@conn.destroy()
-			@conn = null
+
+		@_.disconnecting = true
+		@handleReply ircMsg.parse 'ERROR :Force Quit' + (if reason then " (#{reason})" else '')
 
 	raw: (msg, delay = true) ->
 		if not msg?
@@ -240,7 +241,9 @@ class Client extends Emitter
 		@
 
 
-	isConnected: -> return @_.connected
+	isConnected: -> @_.connected
+
+	isConnecting: -> @_.connecting
 
 	messageDelay: (value) ->
 		return @opt.messageDelay if not value?
@@ -282,6 +285,7 @@ class Client extends Emitter
 				clearTimeout @_.messageQueueTimeout
 				clearTimeout @_.timeout
 				@conn = null
+				@_.connecting = false
 				@_.connected = false
 				@emit 'error', parsedReply if not @_.disconnecting
 				debug 'Disconnected from server'
@@ -291,8 +295,9 @@ class Client extends Emitter
 						@connect @opt.autoReconnectTries
 					, @opt.reconnectDelay
 				@_.disconnecting = false
-				@emit 'disconnect', {}
+				@emit 'disconnect', {reason: parsedReply.params[0]}
 			when getReplyCode 'RPL_WELCOME'
+				@_.connecting = false
 				@_.connected = true
 				@_.nick = parsedReply.params[0]
 				@emit 'connect',

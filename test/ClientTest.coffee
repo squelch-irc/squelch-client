@@ -98,6 +98,7 @@ describe 'Client', ->
 			client.disconnect async(done) () ->
 				client._.disconnecting.should.be.false
 				client.isConnected().should.be.false
+				client.isConnecting().should.be.false
 				done()
 			server.expect 'QUIT'
 			.then ->
@@ -115,6 +116,7 @@ describe 'Client', ->
 			.then ->
 				client._.disconnecting.should.be.false
 				client.isConnected().should.be.false
+				client.isConnecting().should.be.false
 				done()
 
 	describe 'forceQuit', ->
@@ -123,6 +125,7 @@ describe 'Client', ->
 			server.expect 'QUIT'
 			.then ->
 				client.isConnected().should.be.false
+				client.isConnecting().should.be.false
 				should.not.exist client.conn
 				done()
 
@@ -131,10 +134,11 @@ describe 'Client', ->
 			server.expect 'QUIT :screw this'
 			.then ->
 				client.isConnected().should.be.false
+				client.isConnecting().should.be.false
 				should.not.exist client.conn
 				done()
 
-	describe 'isConnected', ->
+	describe 'isConnected/isConnecting', ->
 		beforeEach (done) ->
 			cleanUp client, server, done
 		it 'should only be true when connected to the server', (done) ->
@@ -146,8 +150,11 @@ describe 'Client', ->
 				messageDelay: 0
 				autoReconnect: false
 				autoConnect: false
+			client.isConnecting().should.be.false
 			client.isConnected().should.be.false
 			client.connect()
+			client.isConnecting().should.be.true
+			client.isConnected().should.be.false
 			server.expect [
 				'NICK PakaluPapito'
 				'USER NodeIRCClient 8 * :NodeIRCClient'
@@ -155,6 +162,7 @@ describe 'Client', ->
 			.then ->
 				client.on 'connect', ->
 					client.isConnected().should.be.true
+					client.isConnecting().should.be.false
 					done()
 				server.reply ':localhost 001 PakaluPapito :Welcome to the IRCNet Internet Relay Chat Network PakaluPapito'
 
