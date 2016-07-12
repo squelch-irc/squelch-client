@@ -105,7 +105,6 @@ class Client extends Emitter
 			tries--
 
 			errorListener = (err) =>
-				@_.connecting = false
 				debugError 'Unable to connect.'
 				debugError err
 				@handleReply ircMsg.parse "ERROR :Connection error (#{err.message})"
