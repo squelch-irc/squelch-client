@@ -106,6 +106,8 @@ class Client extends Emitter
 				@_.connecting = false
 				debugError 'Unable to connect.'
 				debugError err
+				@handleReply ircMsg.parse "ERROR :Connection error (#{err.message})"
+
 				if tries > 0 or tries is -1
 					@emit 'reconnecting',
 						port: @opt.port
