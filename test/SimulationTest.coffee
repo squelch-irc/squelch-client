@@ -442,11 +442,17 @@ describe 'handleReply simulations', ->
 
 	describe 'names', ->
 		it 'should emit an names event', (done) ->
-			client.once 'names', async(done) ({chan}) ->
+			client.once 'names', async(done) ({chan, names}) ->
 				chan.should.equal '#sexy'
+				names.should.deep.equal
+					PakaluPapito: ''
+					KR: '@'
+					Freek: ''
+					Kurea: '+'
+					Chase: ''
 				done()
 			server.reply [
-				':availo.esper.net 353 PakaluPapito * #sexy :PakaluPapito @KR Freek +Kurea Chase ^Freek'
+				':availo.esper.net 353 PakaluPapito * #sexy :PakaluPapito @KR Freek +Kurea Chase'
 				':availo.esper.net 366 PakaluPapito #sexy :End of /NAMES list.'
 			]
 

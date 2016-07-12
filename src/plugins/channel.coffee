@@ -104,7 +104,6 @@ module.exports = ->
 			oldMode.call client, chan, modeStr
 
 		client._.internalEmitter.on 'raw', (reply) ->
-
 			if reply.command is getReplyCode 'RPL_NOTOPIC'
 				client._.channels[reply.params[1].toLowerCase()]._.topic = ''
 				client.emit 'topic', {chan: reply.params[1], topic: ''}
@@ -126,9 +125,6 @@ module.exports = ->
 						chan._.users[name[1..]] = name[0]
 					else
 						chan._.users[name] = ''
-			if reply.command is getReplyCode 'RPL_ENDOFNAMES'
-				chan = reply.params[1]
-				client.emit 'names', {chan}
 
 		client._.internalEmitter.on 'nick', ({oldNick, newNick}) ->
 			for name, chan of client._.channels

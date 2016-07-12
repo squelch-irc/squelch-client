@@ -53,6 +53,7 @@ class Client extends Emitter
 				o: '@'
 				v: '+'
 			chanmodes: ['beI', 'k', 'l', 'aimnpqsrt']
+			namesBuffer: {}
 		if not opt?
 			throw new Error 'No options argument given.'
 		if typeof opt is 'string'
@@ -73,6 +74,7 @@ class Client extends Emitter
 		@use require('./plugins/core/invite')()
 		@use require('./plugins/core/mode')()
 		@use require('./plugins/core/motd')()
+		@use require('./plugins/core/names')()
 		@use require('./plugins/channel')()
 
 		if @opt.autoConnect
