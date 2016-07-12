@@ -21,3 +21,5 @@ module.exports = ->
 				me = nick is client.nick()
 
 				client.emit 'kick', {chan, nick, kicker, reason, me}
+
+				client.raw "JOIN #{chan}" if me and client.opt.autoRejoin

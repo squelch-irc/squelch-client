@@ -152,7 +152,6 @@ module.exports = ->
 		client._.internalEmitter.on 'kick', ({chan, nick}) ->
 			if nick is client._.nick
 				delete client._.channels[chan.toLowerCase()]
-				client.raw "JOIN #{chan}" if client.opt.autoRejoin
 			else
 				delete client._.channels[chan.toLowerCase()]._.users[nick]
 
