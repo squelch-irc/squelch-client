@@ -420,8 +420,9 @@ describe 'Client', ->
 				client.topic '#sexy', 'This is topic now'
 				return server.expect 'TOPIC #sexy :This is topic now'
 
-			it 'should return a TOPIC', ->
-				client.topic('#sexy').should.equal 'Welcome to the #sexy!'
+			it 'should request a TOPIC', ->
+				client.topic '#sexy'
+				return server.expect 'TOPIC #sexy'
 
 	describe 'ssl', ->
 		beforeEach ->

@@ -75,7 +75,7 @@ class Client extends Emitter
 		@use require('./plugins/core/mode')()
 		@use require('./plugins/core/motd')()
 		@use require('./plugins/core/names')()
-		@use require('./plugins/channel')()
+		@use require('./plugins/core/topic')()
 
 		if @opt.autoConnect
 			@connect()
@@ -283,7 +283,6 @@ class Client extends Emitter
 				@raw "PONG :#{parsedReply.params[0]}", false
 			when 'ERROR'
 				@conn.destroy()
-				@_.channels = {}
 				@_.messageQueue = []
 				clearTimeout @_.messageQueueTimeout
 				clearTimeout @_.timeout
