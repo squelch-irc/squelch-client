@@ -17,4 +17,6 @@ dist
 docs
 .grunt
 
-run.coffee
+coverage
+.nyc_output
+

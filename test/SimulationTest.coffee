@@ -62,36 +62,6 @@ describe 'handleReply simulations', ->
 		client.isChannel('Clarence').should.be.false
 		client.isChannel('&burp').should.be.false
 
-	describe 'channel objects', ->
-		it 'should have created one for #sexy and #Furry', ->
-			testSexy = (chan) ->
-				chan.should.exist
-				chan.name().should.equal '#sexy'
-				chan.client().should.equal client
-				chan.topic().should.equal 'Welcome to the #sexy!'
-				chan.topicSetter().should.equal 'KR!~KR@78-72-225-13-no193.business.telia.com'
-				chan.topicTime().getTime().should.equal 1394457068
-				chan.contains('KR').should.equal true
-				chan.getStatus('KR').should.equal '@'
-				chan.contains('Kurea').should.equal true
-				chan.getStatus('Kurea').should.equal '+'
-				chan.contains('Chase').should.equal true
-				chan.getStatus('Chase').should.equal ''
-				chan.users().should.deep.equal ['PakaluPapito', 'KR', 'Freek', 'Kurea', 'Chase',]
-				should.not.exist chan._.users['Bud']
-			testFurry = (chan) ->
-				chan.should.exist
-				chan.should.exist
-				chan.name().should.equal '#Furry'
-				chan.topic().should.equal 'Welcome to the #Furry! We have furries.'
-				chan.topicSetter().should.equal 'NotKR!~NotKR@78-72-225-13-no193.business.telia.com'
-				chan.topicTime().getTime().should.equal 1394457070
-
-			testSexy client._.channels['#sexy']
-			testSexy client.getChannel '#sexy'
-			testFurry client._.channels['#furry']
-			testFurry client.getChannel '#furry'
-
 	it 'should know the nick prefixes and chanmodes', ->
 		client.modeToPrefix('o').should.equal '@'
 		client.modeToPrefix('v').should.equal '+'
@@ -254,44 +224,39 @@ describe 'handleReply simulations', ->
 			return server.expect 'PONG :FFFFFFFFBD03A0B0'
 
 	describe 'join', ->
-		it 'should create the channel if it is the client', (done) ->
-			should.not.exist client.getChannel('#gasstation')
-			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com JOIN #gasstation'
-			client.once 'join', ({chan, nick, me}) ->
-				chan.should.equal '#gasstation'
-				nick.should.equal 'PakaluPapito'
-				me.should.be.true
-				client.getChannel('#gasstation').should.exist
-				done()
-
 		it 'should emit a join event', (done) ->
 			server.reply ':HotGurl!~Gurl22@cpe-76-183-227-155.tx.res.rr.com JOIN #sexy'
 			client.once 'join', ({chan, nick, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'HotGurl'
 				me.should.be.false
-				client.getChannel('#sexy').users().indexOf('HotGurl').should.not.equal -1
 				done()
 
+		it 'should set `me` to true if it is the client', (done) ->
+			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com JOIN #gasstation'
+			client.once 'join', ({chan, nick, me}) ->
+				chan.should.equal '#gasstation'
+				nick.should.equal 'PakaluPapito'
+				me.should.be.true
+				done()
+
+
+
 	describe 'part', ->
-		it 'should remove the user from the channels users', (done) ->
-			client.getChannel('#sexy').users().indexOf('KR').should.not.equal -1
+		it 'should emit a part event', (done) ->
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com PART #sexy'
 			client.once 'part', ({chan, nick, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'KR'
 				me.should.be.false
 				done()
-				client.getChannel('#sexy').users().indexOf('KR').should.equal -1
 
-		it 'should remove the channel if the nick is the client', (done) ->
-			client.getChannel('#sexy').should.exist
+		it 'should set `me` to true if it is the client', (done) ->
 			server.reply ':PakaluPapito!~NodeIRCClient@cpe-76-183-227-155.tx.res.rr.com PART #sexy'
 			client.once 'part', ({chan, nick, me}) ->
 				chan.should.equal '#sexy'
 				nick.should.equal 'PakaluPapito'
 				me.should.be.true
-				should.not.exist client.getChannel('#sexy')
 				done()
 
 	describe 'nick', ->
@@ -300,8 +265,6 @@ describe 'handleReply simulations', ->
 				oldNick.should.equal 'KR'
 				newNick.should.equal 'RK'
 				me.should.be.false
-				client.getChannel('#sexy')._.users['RK'].should.equal '@'
-				should.not.exist client.getChannel('#sexy')._.users['KR']
 				done()
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com NICK :RK'
 
@@ -321,8 +284,7 @@ describe 'handleReply simulations', ->
 			server.reply 'ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)'
 
 	describe 'kick', ->
-		it 'should remove the user from the channels users', (done) ->
-			client.getChannel('#sexy').users().indexOf('Freek').should.not.equal -1
+		it 'should emit a kick event', (done) ->
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #sexy Freek'
 			client.once 'kick', ({chan, nick, kicker, reason, me}) ->
 				chan.should.equal '#sexy'
@@ -330,11 +292,9 @@ describe 'handleReply simulations', ->
 				kicker.should.equal 'KR'
 				should.not.exist reason
 				me.should.be.false
-				client.getChannel('#sexy').users().indexOf('Freek').should.equal -1
 				done()
 
-		it 'should remove the channel if the nick is the client', (done) ->
-			client.getChannel('#sexy').should.exist
+		it 'should set `me` to true if it is the client', (done) ->
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #sexy PakaluPapito :THIS IS SPARTA!'
 			client.once 'kick', ({chan, nick, kicker, reason, me}) ->
 				chan.should.equal '#sexy'
@@ -342,19 +302,14 @@ describe 'handleReply simulations', ->
 				kicker.should.equal 'KR'
 				reason.should.equal 'THIS IS SPARTA!'
 				me.should.be.true
-				should.not.exist client.getChannel('#sexy')
 				done()
 
 	describe 'quit', ->
-		it 'should remove the user from the channels they are in', (done) ->
-			client.getChannel('#sexy').users().indexOf('Chase').should.not.equal -1
+		it 'should emit a quit event', (done) ->
 			server.reply ':Chase!kalt@millennium.stealth.net QUIT :Choke on it.'
-			client.once 'quit', ({nick, reason, channels}) ->
-				client.getChannel('#sexy').users().indexOf('Chase').should.equal -1
+			client.once 'quit', ({nick, reason}) ->
 				nick.should.equal 'Chase'
 				reason.should.equal 'Choke on it.'
-				channels.length.should.equal 1
-				channels[0].should.equal '#sexy'
 				done()
 
 	describe 'msg', ->
@@ -430,15 +385,10 @@ describe 'handleReply simulations', ->
 
 	describe 'mode', ->
 		it 'should emit a mode event for +o-o with params (prefix mode)', (done) ->
-			client.getChannel('#sexy')._.users['KR'].should.equal '@'
-			client.getChannel('#sexy')._.users['Chase'].should.equal ''
-
 			client.once 'mode', ({chan, sender, mode}) ->
 				chan.should.equal '#sexy'
 				sender.should.equal 'KR'
 				mode.should.equal '-o+o KR Chase'
-				client.getChannel('#sexy')._.users['KR'].should.equal ''
-				client.getChannel('#sexy')._.users['Chase'].should.equal '@'
 				done()
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -o+o KR Chase'
 
@@ -451,32 +401,17 @@ describe 'handleReply simulations', ->
 				done()
 			server.reply ':irc.ircnet.net MODE #sexy +n'
 
-		it 'should emit a +mode event for +o with param (prefix mode)', (done) ->
-			client.getChannel('#sexy')._.users['Freek'].should.equal ''
-			client.once '+mode', ({chan, sender, mode, param}) ->
-				chan.should.equal '#sexy'
-				sender.should.equal 'KR'
-				mode.should.equal 'o'
-				param.should.equal 'Freek'
-				client.getChannel('#sexy')._.users['Freek'].should.equal '@'
-				done()
-			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy +o Freek'
-
 		it 'should emit a -mode and +mode event for +o-o with params (prefix mode)', (done) ->
-			client.getChannel('#sexy')._.users['KR'].should.equal '@'
 			client.once '-mode', ({chan, sender, mode, param}) ->
 				chan.should.equal '#sexy'
 				sender.should.equal 'KR'
 				mode.should.equal 'o'
 				param.should.equal 'KR'
-				client.getChannel('#sexy')._.users['KR'].should.equal ''
-				client.getChannel('#sexy')._.users['Chase'].should.equal ''
 				client.once '+mode', ({chan, sender, mode, param}) ->
 					chan.should.equal '#sexy'
 					sender.should.equal 'KR'
 					mode.should.equal 'o'
 					param.should.equal 'Chase'
-					client.getChannel('#sexy')._.users['Chase'].should.equal '@'
 					done()
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -o+o KR Chase'
 
@@ -515,28 +450,6 @@ describe 'handleReply simulations', ->
 				should.not.exist param
 				done()
 			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -l'
-
-		it 'should update the users status in the channel object for +v', (done) ->
-			client.getChannel('#sexy')._.users['Chase'].should.equal ''
-			client.once '+mode', ({chan, sender, mode, param}) ->
-				chan.should.equal '#sexy'
-				sender.should.equal 'KR'
-				mode.should.equal 'v'
-				param.should.equal 'Chase'
-				client.getChannel('#sexy')._.users['Chase'].should.equal '+'
-				done()
-			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy +v Chase'
-
-		it 'should update the users status in the channel object for -v', (done) ->
-			client.getChannel('#sexy')._.users['Kurea'].should.equal '+'
-			client.once '-mode', ({chan, sender, mode, param}) ->
-				chan.should.equal '#sexy'
-				sender.should.equal 'KR'
-				mode.should.equal 'v'
-				param.should.equal 'Kurea'
-				client.getChannel('#sexy')._.users['Kurea'].should.equal ''
-				done()
-			server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com MODE #sexy -v Kurea'
 
 	describe 'usermode', ->
 		it 'should emit usermode for modes on users', (done) ->

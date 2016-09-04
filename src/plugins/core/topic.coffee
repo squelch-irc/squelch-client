@@ -14,9 +14,6 @@ module.exports = ->
 			if reply.command is getReplyCode 'RPL_TOPIC'
 				client.emit 'topic', {chan: reply.params[1], topic: reply.params[2]}
 			if reply.command is getReplyCode 'RPL_TOPIC_WHO_TIME'
-				chan = client._.channels[reply.params[1].toLowerCase()]
-				chan._.topicSetter = reply.params[2]
-				chan._.topicTime =
 				client.emit 'topicwho',
 					chan: reply.params[1]
 					hostmask: reply.params[2]

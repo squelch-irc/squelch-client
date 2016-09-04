@@ -22,13 +22,14 @@
     "coffee-script": "^1.10.0",
     "coffeelint": "^1.14.2",
     "mocha": "^3.0.0",
+    "nyc": "^8.1.0",
     "rimraf": "^2.5.2"
   },
   "scripts": {
     "clean": "rimraf dist",
     "lint": "coffeelint src test",
     "pretest": "npm run lint",
-    "test": "mocha",
+    "test": "nyc --extension .coffee mocha",
     "prebuild": "npm run clean && npm run test",
     "build": "coffee -c -o dist src",
     "prepublish": "npm run build"
