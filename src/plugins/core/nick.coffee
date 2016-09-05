@@ -1,6 +1,5 @@
 {getSender} = require '../../util'
 {getReplyCode} = require '../../replies'
-Promise = require 'bluebird'
 
 module.exports = ->
 	return (client) ->

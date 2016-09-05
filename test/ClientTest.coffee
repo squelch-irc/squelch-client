@@ -65,21 +65,6 @@ describe 'Client', ->
 			client.disconnect 'Choke on it.'
 			return server.expect 'QUIT :Choke on it.'
 
-		it 'should run the callback on successful disconnect', ->
-			client._.disconnecting.should.be.false
-
-			disconnectPromise = new Promise (resolve) ->
-				client.disconnect ->
-					client._.disconnecting.should.be.false
-					client.isConnected().should.be.false
-					client.isConnecting().should.be.false
-					resolve()
-			quitPromise = server.expect 'QUIT'
-			.then ->
-				client._.disconnecting.should.be.true
-				server.reply 'ERROR :Closing Link: cpe-76-183-227-155.tx.res.rr.com (Client Quit)'
-			return Promise.all([disconnectPromise, quitPromise])
-
 		it 'should resolve the promise on successful disconnect', ->
 			client._.disconnecting.should.be.false
 			disconnectPromise = client.disconnect()

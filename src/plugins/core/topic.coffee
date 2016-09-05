@@ -1,5 +1,3 @@
-Promise = require 'bluebird'
-{promiseForEvent} = require '../../util'
 {getReplyCode} = require '../../replies'
 
 module.exports = ->

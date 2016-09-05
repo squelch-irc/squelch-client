@@ -1,5 +1,4 @@
 {getSender} = require '../../util'
-Promise = require 'bluebird'
 
 module.exports = ->
 	return (client) ->
