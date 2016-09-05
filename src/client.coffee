@@ -3,7 +3,6 @@ tls = require 'tls'
 path = require 'path'
 {Emitter} = require '@rahatarmanahmed/event-kit'
 ircMsg = require 'irc-message'
-Promise = require 'bluebird'
 streamMap = require 'through2-map'
 color = require 'irc-colors'
 
@@ -88,20 +87,13 @@ class Client extends Emitter
 		@_.internalEmitter.emit args... if args[0] isnt 'error'
 		super args...
 
-	# Default callback when callback isn't specified to a function.
-	# By default it will log the error to console if this bot is
-	cbNoop: (err) -> debugError err if err
-
-	connect: (tries = 1, cb) ->
+	connect: (tries = 1) ->
 		return new Promise (resolve, reject) =>
 			@_.connecting = true
 			@emit 'connecting',
 				port: @opt.port
 				server: @opt.server
 			debug 'Connecting...'
-			if tries instanceof Function
-				cb = tries
-				tries = 1
 			tries--
 
 			errorListener = (err) =>
@@ -117,7 +109,7 @@ class Client extends Emitter
 						triesLeft: tries
 					debugError "Reconnecting in #{@opt.reconnectDelay/1000} seconds... (#{tries} remaining tries)"
 					setTimeout =>
-						@connect tries, cb
+						@connect tries
 					, @opt.reconnectDelay
 				else
 					reject err
@@ -182,13 +174,9 @@ class Client extends Emitter
 			else
 				@conn = net.connect @opt.port, @opt.server, onConnect
 			@conn.once 'error', errorListener
-		.nodeify cb or @cbNoop
 
-	disconnect: (reason, cb) ->
+	disconnect: (reason) ->
 		return new Promise (resolve) =>
-			if reason instanceof Function
-				cb = reason
-				reason = undefined
 			@_.disconnecting = true
 			if reason?
 				@raw "QUIT :#{reason}", false
@@ -196,7 +184,6 @@ class Client extends Emitter
 				@raw 'QUIT', false
 			@_.internalEmitter.once 'disconnect', ->
 				resolve()
-		.nodeify cb or @cbNoop
 
 	forceQuit: (reason) ->
 		if @isConnected()
