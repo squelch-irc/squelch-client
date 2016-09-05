@@ -154,6 +154,22 @@ describe 'Client', ->
 				server.reply ':KR!~RayK@cpe-76-183-227-155.tx.res.rr.com KICK #nice PakaluPapito :Nice ppl only'
 				server.expect 'JOIN #nice'
 
+	describe 'raw', ->
+		it 'should throw an error if client is not yet connected', ->
+			return cleanUp client, server
+			.then ->
+				client = new Client
+					server: 'localhost'
+					nick: 'PakaluPapito'
+					messageDelay: 0
+					autoReconnect: false
+					autoConnect: false
+				(-> client.raw('send this message pleause')).should.throw(Error)
+		it 'should do nothing if message is empty or missing', ->
+			client.raw ''
+			client.raw null
+			client.raw
+
 	describe 'kick', ->
 		it 'with single chan and nick', ->
 			client.kick '#persia', 'messenger'

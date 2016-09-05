@@ -207,9 +207,9 @@ class Client extends Emitter
 
 	raw: (msg, delay = true) ->
 		if not msg?
-			throw new Error()
-		if not @conn?
 			return
+		if not @conn?
+			throw new Error("Cannot send message, client has not yet connected. Attempted to send: #{msg}")
 		if not delay or @opt.messageDelay is 0
 			debug "-> #{msg}"
 			@conn.write msg + '\r\n'
@@ -229,14 +229,14 @@ class Client extends Emitter
 	# Include the target in the command
 	splitText: (command, msg, extra = 0) ->
 		limit = 512 -
-			3 -                     # :!@
-			@_.nick.length -        # nick of hostmask
-			9 -                     # max username
-			65 -                    # max hostname
-			command.length -        # command
-			2 -                     # ' :' before msg
-			2 -                     # /r/n
-			extra                   # any extra space requested
+			3 -                       # :!@
+			(@_?.nick?.length || 9) - # nick of hostmask
+			9 -                       # max username
+			65 -                      # max hostname
+			command.length -          # command
+			2 -                       # ' :' before msg
+			2 -                       # /r/n
+			extra                     # any extra space requested
 		return (msg.slice(i, i+limit) for i in [0..msg.length] by limit)
 
 	use: (plugin) ->
