@@ -55,6 +55,17 @@ describe 'Client', ->
 			client.opt.username.should.equal 'NodeIRCTestBot'
 			client.opt.realname.should.equal 'I do the tests.'
 			client.opt.autoConnect.should.equal false
+		it 'should set an incremental id on the client', ->
+			client = new Client('./test/testConfig.json')
+			client2 = new Client('./test/testConfig.json')
+			client.id.should.be.greaterThan 0
+			client2.id.should.equal client.id + 1
+
+	describe 'events', ->
+		it 'should provide id on event data objects', ->
+			client._.internalEmitter.on 'test-event', ({id}) -> id.should.equal client.id
+			client.on 'test-event', ({id}) -> id.should.equal client.id
+			client.emit 'test-event', {some: 'data'}
 
 	describe 'disconnect', ->
 		it 'should send QUIT to the server and null the connection', ->
