@@ -12,6 +12,8 @@ debugError = require('debug')('squelch-client:error')
 {getSender} = require './util'
 {getReplyCode, getReplyName} = require './replies'
 
+nextId = 1
+
 defaultOpt =
 	port: 6667
 	nick: 'NodeIRCClient'
@@ -37,6 +39,7 @@ defaultOpt =
 class Client extends Emitter
 	constructor: (opt) ->
 		super()
+		@id = nextId++
 		@_ =
 			internalEmitter: new Emitter()
 			numRetries: 0
@@ -84,6 +87,7 @@ class Client extends Emitter
 	# external listeners.
 	# NOTE: internalEmitter won't receive error events
 	emit: (args...) ->
+		args[1].id = @id if typeof args[1] is 'object'
 		@_.internalEmitter.emit args... if args[0] isnt 'error'
 		super args...
 
