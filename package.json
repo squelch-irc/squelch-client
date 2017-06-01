@@ -10,7 +10,7 @@
   "main": "dist/client.js",
   "dependencies": {
     "@rahatarmanahmed/event-kit": "^2.1.0-featureonce",
-    "debug": "^2.2.0",
+    "debug": "^2.4.0",
     "irc-colors": "^1.2.0",
     "irc-message": "~3.0.0",
     "irc-replies": "^2.0.1",
